@@ -165,7 +165,7 @@ table.plan tr.tot td{font-weight:800;border-top:1px solid #3b82f6;border-bottom:
     <ul class="pts">
       <li><b>Where:</b> mosques · schools · bus · malls · parks · walkways · junctions</li>
       <li><b>Zone:</b> 20 m cooling perimeter around each building</li>
-      <li><b>Output:</b> ☂ umbrellas (short‑term) · 🌳 trees (long‑term)</li>
+      <li><b>Phase 1 (now):</b> ☂ umbrellas · <b>Phase 2 (long‑term):</b> 🌳 trees</li>
     </ul>
     <div class="kpis" id="k1"></div>
     <h3>Cooling Priority Index <span id="cpiArea"></span></h3>
@@ -173,8 +173,8 @@ table.plan tr.tot td{font-weight:800;border-top:1px solid #3b82f6;border-bottom:
     <h3>Action‑Requirement Plan <button class="btn" id="bcsv" style="padding:4px 8px;font-size:11px">⤓ CSV</button></h3>
     <div class="card">
       <div class="big2">
-        <div style="background:linear-gradient(135deg,#0e3a4a,#103040)"><b id="nU">0</b><span>☂ Umbrellas · 100 m²<br>short‑term</span></div>
-        <div style="background:linear-gradient(135deg,#123d24,#0f2e1d)"><b id="nT">0</b><span>🌳 Shade trees · 200 m² canopy<br>long‑term</span></div>
+        <div style="background:linear-gradient(135deg,#0e3a4a,#103040)"><b id="nU">0</b><span>☂ Umbrellas · Phase 1<br>100 m² shade each</span></div>
+        <div style="background:linear-gradient(135deg,#123d24,#0f2e1d)"><b id="nT">0</b><span>🌳 Trees · Phase 2<br><span id="nTs"></span></span></div>
       </div>
       <div class="subtabs" id="opt"><button data-o="umb" class="on">☂ Umbrellas</button><button data-o="tree">🌳 Trees</button><button data-o="both">☂ + 🌳 Both</button><button data-o="none">Hide</button></div>
       <table class="plan" id="ptab"></table>
@@ -315,15 +315,20 @@ function applyUmbFilter(){if(!m1Ready)return;const f=['all',['in',['get','e'],['
   countUp($('nU'),P.tot_umb);countUp($('nT'),P.tot_tree);
   const rows=[['Mosque','Mosques'],['School','Schools'],['Bus','Bus stations'],['Mall','Shopping malls'],['Park','Parks'],['Walkway','Walkways'],['Junction','Road junctions'],['Crossing','Ped. crossings'],['StreetTree','Street trees (long‑term)']];
   let tu=0,tt=0,tm=0;
-  $('ptab').innerHTML='<tr><th>Element</th><th>Sites</th><th>Shade m²</th><th>☂</th><th>🌳</th></tr>'+rows.map(([k,l])=>{const r=P.summary[k];if(!r)return'';tu+=r.umb;tt+=r.tree;tm+=r.m2;
-     const n=(k==='Walkway'||k==='StreetTree')?fmt(r.km,0)+' km':fmt(r.sites);return`<tr><td>${l}</td><td>${n}</td><td>${fmt(r.m2)}</td><td>${r.umb?fmt(r.umb):'–'}</td><td>${r.tree?fmt(r.tree):'–'}</td></tr>`}).join('')+
-     `<tr class="tot"><td>Total</td><td></td><td>${fmt(tm)}</td><td>${fmt(tu)}</td><td>${fmt(tt)}</td></tr>`;
-  $('pnote').innerHTML=`<ul class="pts" style="margin:0;font-size:11.5px"><li>1 ☂ = 100 m² · 1 🌳 = 200 m² · <b>same shade, two options</b></li>
-    <li>Only on <b>suitable open cells</b> (score ≥ ${D.suit_w.min}), ${D.suit_w.spacing} m apart</li>
-    <li>Walkways: 1 shade stop every 100 / 150 / 220 m (Critical / VH / High)</li>
-    <li>Every major‑road junction (High+) and every Critical junction: 1 corner umbrella</li>
-    <li>Masjid an‑Nabawi plaza excluded (umbrellas exist)</li>
-    <li><b>Street trees</b>: both sides of every walkable street in High+ zones, every ${D.plan.street.sp} m</li></ul>`;
+  $('nTs').textContent=`${fmt(P.site_tree)} at sites + ${fmt(P.street.n)} street`;
+  $('ptab').innerHTML='<tr><th>Element</th><th>Count</th><th>☂ Phase 1</th><th>🌳 Phase 2</th></tr>'+rows.map(([k,l])=>{const r=P.summary[k];if(!r)return'';tu+=r.umb;tt+=r.tree;
+     const n=(k==='Walkway'||k==='StreetTree')?fmt(r.km,0)+' km':fmt(r.sites);return`<tr><td>${l}</td><td>${n}</td><td>${r.umb?fmt(r.umb):'–'}</td><td>${r.tree?fmt(r.tree):'–'}</td></tr>`}).join('')+
+     `<tr class="tot"><td>Total</td><td></td><td>${fmt(tu)}</td><td>${fmt(tt)}</td></tr>`;
+  const zeroLow=Object.values(P.site).filter(v=>v[0]===0&&!v[3]).length,noSpace=Object.values(P.site).filter(v=>v[0]===0&&/^No suitable/.test(v[3])).length,J=P.summary.Junction;
+  $('pnote').innerHTML=`<ul class="pts" style="margin:0;font-size:11.5px">
+    <li><b>Phase 1 ☂</b> = quick shade now (100 m² each). <b>Phase 2 🌳</b> = permanent shade (200 m² crown each).</li>
+    <li>At sites, 1 tree later replaces 2 umbrellas. Street trees are <b>extra</b>, along streets.</li>
+    <li>☂ only on open, suitable spots (score ≥ ${D.suit_w.min}), never on a building or road, ${D.suit_w.spacing} m apart.</li>
+    <li>Walkways: 1 ☂ every 100 / 150 / 220 m (Critical / Very High / High).</li>
+    <li>Junctions: ${fmt(J.umb)} of ${fmt(J.sites)} get a corner ☂. The other ${fmt(J.sites-J.umb)} have no open corner.</li>
+    <li>${fmt(zeroLow)} low‑priority sites (bottom 25 %) get none: heat and footfall are low there. ${noSpace} more sites have no open space around them (buildings / roads).</li>
+    <li>Masjid an‑Nabawi plaza: not counted, umbrellas already exist.</li>
+    <li>Street trees: both sides of every walkable street in High+ zones, every ${D.plan.street.sp} m.</li></ul>`;
   const SW=D.suit_w;
   $('suitbox').innerHTML=`<div class="formula">S = ${SW.heat}% Heat + ${SW.foot}% Footfall<br>&nbsp;&nbsp;+ ${SW.sun}% Sun exposure + ${SW.access}% Access</div>
     <ul class="pts" style="margin:0"><li><b>Heat</b>: cooling priority (CPI) of the spot</li><li><b>Footfall</b>: pedestrian index + waiting (gate, stop, crossing)</li>
@@ -331,9 +336,9 @@ function applyUmbFilter(){if(!m1Ready)return;const f=['all',['in',['get','e'],['
     <li>❌ Not on buildings, roads, existing tree shade</li></ul>
     <div class="ramp" style="background:linear-gradient(90deg,#334155,#f59e0b 45%,#22d3ee 75%,#a5f3fc)"></div><div class="rampl"><span>35 low</span><span>55 suitable</span><span>100 best</span></div>
     <div class="note">Zoom in (z15+) to see the 8 m suitability cells; click any ☂ to see <b>why it is there</b>.</div>`;
-  $('eff').innerHTML=`<div class="kpis" style="margin:0 0 8px"><div class="kpi" style="--k:#22c55e"><div class="v">${fmt(P.shade_pct)}<small>%</small></div><div class="l">of priority pedestrian space gets shade</div></div>
-    <div class="kpi" style="--k:#38bdf8"><div class="v">↓ ${fmt(Math.abs(P.air_dT),2)}<small>°C cooler</small></div><div class="l">air temperature drop from +${fmt(P.canopy_pp,0)} % tree canopy (WRI: 0.33 °C per +10 %)</div></div></div>
-    <ul class="pts" style="margin:0"><li>Real gain = <b>felt heat (UTCI) under the shade</b>, not air temp.</li><li><b>Next:</b> SOLWEIG before/after UTCI at top sites</li></ul>`;
+  $('eff').innerHTML=`<div class="kpis" style="margin:0 0 8px"><div class="kpi" style="--k:#22c55e"><div class="v">${fmt(P.shade_pct)}<small>%</small></div><div class="l">of busy pedestrian spaces (forecourts, walkways, crossings, junctions) shaded by ☂ in Phase 1</div></div>
+    <div class="kpi" style="--k:#38bdf8"><div class="v">↓ ${fmt(Math.abs(P.air_dT),2)}<small>°C cooler</small></div><div class="l">cooler air in High+ zones (${fmt(P.hot_km2,0)} km²) after Phase 2: +${fmt(P.canopy_pp,0)} % tree canopy × 0.33 °C per 10 % (WRI)</div></div></div>
+    <ul class="pts" style="margin:0"><li>Under a ☂ or 🌳 the <b>felt heat</b> drops much more than the air, because direct sun is blocked.</li><li><b>Next:</b> SOLWEIG before/after UTCI at top sites</li></ul>`;
   ['opt','opt2'].forEach(id=>$(id).querySelectorAll('button').forEach(b=>b.onclick=()=>{shadeOpt=b.dataset.o;
     ['opt','opt2'].forEach(j=>$(j).querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.o===shadeOpt)));applyShade()}));
   $('cat1').innerHTML=Object.entries(CAT).map(([k,v])=>`<div class="chip" data-c="${k}"><span class="d" style="background:${v.c}"></span>${v.l} <span style="color:var(--mut)">${fmt(S.cats[k].n)}</span></div>`).join('');

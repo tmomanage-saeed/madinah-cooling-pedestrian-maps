@@ -8,3 +8,4 @@ web/*
 !web/template.html
 !web/build_web_data.py
 !web/inject.py
+!index.html
