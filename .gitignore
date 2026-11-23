@@ -1,0 +1,10 @@
+*
+!.gitignore
+!README.md
+!Action_Requirement_Plan.csv
+!web/
+web/*
+!web/Madinah_Cooling_Pedestrian_Maps.html
+!web/template.html
+!web/build_web_data.py
+!web/inject.py

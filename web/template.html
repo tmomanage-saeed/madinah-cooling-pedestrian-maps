@@ -1,0 +1,783 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Madinah Cooling &amp; Pedestrian Maps</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Naskh+Arabic:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<style>
+:root{--bg:#0b1016;--panel:#111821;--panel2:#18212d;--line:#243142;--tx:#e8eef5;--mut:#8d9bb0;--acc:#38bdf8}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);font-family:Inter,system-ui,sans-serif;overflow:hidden}
+header{position:absolute;inset:0 0 auto 0;height:62px;display:flex;align-items:center;gap:16px;padding:0 16px;background:rgba(11,16,22,.96);border-bottom:1px solid var(--line);z-index:20}
+.brand{display:flex;flex-direction:column;line-height:1.15;min-width:0}
+.brand b{font-size:16px;font-weight:800;white-space:nowrap}
+.brand span{font-size:11.5px;color:var(--mut);white-space:nowrap}
+.tabs{display:flex;gap:6px;margin-left:8px}
+.tab{border:1px solid var(--line);background:var(--panel);color:var(--mut);padding:8px 14px;border-radius:10px;cursor:pointer;font:600 13px Inter;display:flex;gap:8px;align-items:center;transition:.2s}
+.tab i{font-style:normal;font-size:11px;background:var(--panel2);padding:2px 6px;border-radius:6px}
+.tab.on{color:#fff;border-color:#3b82f6;background:linear-gradient(135deg,#1d3557,#16243a);box-shadow:0 6px 20px #0006}
+.tools{margin-left:auto;display:flex;gap:6px;align-items:center}
+.btn{border:1px solid var(--line);background:var(--panel);color:var(--tx);padding:7px 11px;border-radius:9px;cursor:pointer;font:600 12px Inter;white-space:nowrap}
+.btn:hover{border-color:#3b82f6}.btn.on{background:#1d3557;border-color:#3b82f6}
+.seg{display:flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.seg button{border:0;background:var(--panel);color:var(--mut);padding:7px 10px;font:600 12px Inter;cursor:pointer}
+.seg button.on{background:#1d3557;color:#fff}
+.view{position:absolute;inset:62px 0 0 0;display:none}.view.on{display:block}
+.map{position:absolute;inset:0 0 0 410px}
+aside{position:absolute;left:0;top:0;bottom:0;width:410px;background:var(--panel);border-right:1px solid var(--line);overflow-y:auto;padding:18px 18px 40px;z-index:5}
+aside::-webkit-scrollbar{width:8px}aside::-webkit-scrollbar-thumb{background:#263345;border-radius:8px}
+.kicker{font:700 11px Inter;letter-spacing:1.6px;text-transform:uppercase;color:var(--acc)}
+h1{font-size:22px;margin:6px 0;line-height:1.2}
+.lead{color:var(--mut);font-size:13px;line-height:1.55;margin:0 0 12px}
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0 14px}
+.kpi{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;position:relative;overflow:hidden}
+.kpi .v{font-size:22px;font-weight:800;letter-spacing:-.4px;font-variant-numeric:tabular-nums}
+.kpi .v small{font-size:12px;color:var(--mut);font-weight:600;margin-left:3px}
+.kpi .l{font-size:11.5px;color:var(--mut);margin-top:2px;line-height:1.35}
+.kpi:before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--k,#38bdf8)}
+h3{font-size:12px;letter-spacing:1.2px;text-transform:uppercase;color:var(--mut);margin:20px 0 9px;font-weight:700;display:flex;justify-content:space-between;align-items:center;gap:8px}
+h3 span{text-transform:none;letter-spacing:0;font-weight:600}
+.card{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px}
+.dist{display:flex;flex-direction:column;gap:6px}
+.drow{display:grid;grid-template-columns:86px 1fr 66px;gap:8px;align-items:center;font-size:12px}
+.dbar{height:10px;border-radius:6px;background:#1f2a38;overflow:hidden}
+.dbar div{height:100%;border-radius:6px;transform-origin:left;animation:grow 1.1s cubic-bezier(.2,.8,.2,1) both}
+@keyframes grow{from{transform:scaleX(0)}}
+.drow .n{text-align:right;color:var(--mut);font-variant-numeric:tabular-nums}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--panel2);padding:6px 9px;border-radius:999px;font-size:12px;cursor:pointer;user-select:none}
+.chip .d{width:10px;height:10px;border-radius:50%}.chip.off{opacity:.38}
+.list{display:flex;flex-direction:column;gap:5px;max-height:330px;overflow:auto}
+.item{display:grid;grid-template-columns:22px 1fr auto;gap:8px;align-items:center;padding:8px 9px;border-radius:9px;background:#141c26;border:1px solid transparent;cursor:pointer;font-size:12.5px}
+.item:hover{border-color:#3b82f6}
+.item .r{font-weight:800;color:var(--mut);font-size:11px}
+.item .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .nm small{display:block;color:var(--mut);font-size:11px;font-family:Inter}
+.ar{font-family:"Noto Naskh Arabic",Inter,sans-serif}
+.badge{font-size:11px;font-weight:700;padding:3px 7px;border-radius:6px}
+.subtabs{display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap}
+.subtabs button{border:1px solid var(--line);background:#141c26;color:var(--mut);border-radius:7px;padding:4px 8px;font:600 11.5px Inter;cursor:pointer}
+.subtabs button.on{color:#fff;border-color:#3b82f6;background:#1d3557}
+.method{font-size:12.5px;color:#c4cfdd;line-height:1.6}
+.method code{background:#0d141c;border:1px solid var(--line);padding:1px 5px;border-radius:5px;font-size:11.5px;color:#9fd8ff}
+.formula{background:#0d141c;border:1px solid var(--line);border-radius:10px;padding:10px;font:600 12.5px ui-monospace,Consolas,monospace;color:#9fd8ff;margin:8px 0;line-height:1.6}
+.note{font-size:11.5px;color:var(--mut);line-height:1.5;border-left:2px solid #f4c95d;padding-left:9px;margin-top:10px}
+table.plan{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}
+table.plan th{color:var(--mut);font-weight:600;text-align:right;padding:5px 4px;border-bottom:1px solid var(--line);font-size:11px}
+table.plan th:first-child,table.plan td:first-child{text-align:left}
+table.plan td{padding:6px 4px;text-align:right;border-bottom:1px solid #1d2734}
+table.plan tr.tot td{font-weight:800;border-top:1px solid #3b82f6;border-bottom:0;color:#fff}
+.big2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.big2 div{border-radius:12px;padding:12px;text-align:center}
+.big2 b{display:block;font-size:28px;font-weight:800;letter-spacing:-.5px}
+.big2 span{font-size:11.5px;opacity:.85}
+.legend{position:absolute;right:14px;bottom:28px;background:rgba(17,24,33,.94);border:1px solid var(--line);border-radius:12px;padding:12px 14px;min-width:220px;max-height:calc(100% - 140px);overflow:auto;z-index:4;box-shadow:0 10px 30px #0008}
+.legend h4{margin:0 0 8px;font-size:12px;letter-spacing:.6px}
+.lg{display:flex;align-items:center;gap:8px;font-size:12px;margin:4px 0;color:#d5dde8}
+.sw{width:16px;height:12px;border-radius:3px;flex:none}.sw.l{height:3px;border-radius:2px}.sw.c{width:12px;height:12px;border-radius:50%}
+.sep{height:1px;background:var(--line);margin:8px 0}
+.ramp{height:10px;border-radius:5px;margin:6px 0 3px}
+.rampl{display:flex;justify-content:space-between;font-size:10.5px;color:var(--mut)}
+.play{display:flex;align-items:center;gap:10px;margin-top:6px}
+.play input[type=range]{flex:1;accent-color:#ffd166}
+.tbig{font:800 22px Inter;min-width:74px;text-align:right;font-variant-numeric:tabular-nums}
+.toggles{display:flex;flex-direction:column;gap:6px}
+.tg{display:flex;align-items:center;gap:9px;font-size:12.5px;cursor:pointer}
+.tg input{accent-color:#38bdf8}
+.route{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:10px}
+.route div{background:#141c26;border-radius:9px;padding:8px;text-align:center}
+.route b{display:block;font-size:18px}
+.route span{font-size:10.5px;color:var(--mut)}
+.maplibregl-popup-content{background:#111821f2;color:var(--tx);border:1px solid var(--line);border-radius:12px;padding:12px 14px;box-shadow:0 12px 30px #000a;font-family:Inter;min-width:230px}
+.maplibregl-popup-tip{border-top-color:#111821f2!important;border-bottom-color:#111821f2!important}
+.maplibregl-popup-close-button{color:#8d9bb0;font-size:18px;right:6px;top:4px}
+.pp h5{margin:0 0 3px;font-size:14px}
+.pp .s{font-size:11.5px;color:var(--mut);margin-bottom:8px}
+.pp .b{display:grid;grid-template-columns:96px 1fr 30px;gap:6px;align-items:center;font-size:11.5px;margin:3px 0}
+.pp .b .t{height:6px;background:#1f2a38;border-radius:4px;overflow:hidden}.pp .b .t div{height:100%}
+.pp .act{margin-top:8px;padding-top:8px;border-top:1px solid var(--line);font-size:12px;display:flex;gap:14px}
+.maplibregl-ctrl-attrib{background:#0b1016cc!important;color:#8d9bb0}.maplibregl-ctrl-attrib a{color:#8d9bb0}
+.maplibregl-ctrl-group{background:#111821;border:1px solid var(--line)}
+.maplibregl-ctrl-group button span{filter:invert(.85)}
+.maplibregl-ctrl-scale{background:#111821cc;color:#d5dde8;border-color:#8d9bb0}
+.haram{width:16px;height:16px;border-radius:50%;background:#ffd166;box-shadow:0 0 0 4px #ffd16655,0 0 24px 8px #ffd16688;position:relative}
+.haram:after{content:"";position:absolute;inset:-14px;border:2px solid #ffd166;border-radius:50%;animation:ping 2.2s infinite}
+@keyframes ping{from{transform:scale(.4);opacity:1}to{transform:scale(1.6);opacity:0}}
+.hlabel{position:absolute;left:22px;top:-6px;white-space:nowrap;font:700 12px Inter;color:#ffd166;text-shadow:0 1px 4px #000}
+.pin{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font:800 13px Inter;color:#111;border:2px solid #fff;box-shadow:0 4px 14px #000a}
+.walker{display:block;width:30px;height:44px;overflow:visible;filter:drop-shadow(0 0 5px #22c55e) drop-shadow(0 0 2px #000);--sw:.62s}
+.walker .fig{animation:bob calc(var(--sw)/2) ease-in-out infinite alternate}
+.walker line{stroke:#f8fafc;stroke-width:3.8;stroke-linecap:round}
+.walker circle{fill:#f8fafc}
+.walker .leg,.walker .arm{transform-box:view-box;animation:swing var(--sw) ease-in-out infinite alternate}
+.walker .leg{transform-origin:15px 25px}.walker .arm{transform-origin:15px 13px;stroke-width:3.2}
+.walker .l2,.walker .a1{animation-direction:alternate-reverse}
+@keyframes swing{from{transform:rotate(30deg)}to{transform:rotate(-30deg)}}
+@keyframes bob{from{transform:translateY(0)}to{transform:translateY(-1.6px)}}
+.walker.rest .fig,.walker.rest .leg,.walker.rest .arm{animation:none}
+.walker.rest .a1{transform:rotate(-150deg)}.walker.rest .a2{transform:rotate(150deg)}
+.mopt{position:absolute;left:426px;top:14px;z-index:4;box-shadow:0 8px 24px #0009}.mopt button{padding:9px 13px;font-size:13px}
+@media (max-width:900px){.mopt{left:8px;top:8px}}
+.wk{display:flex;flex-direction:column;align-items:center}
+.srch{width:100%;background:#0d141c;border:1px solid var(--line);color:var(--tx);border-radius:9px;padding:8px 10px;font:500 12.5px Inter;margin-bottom:8px}
+.pts{margin:0 0 12px;padding-left:16px;color:#c4cfdd;font-size:12.5px;line-height:1.55}.pts li{margin:2px 0}.pts b{color:#fff}
+.rng{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--mut);margin-top:8px}.rng input{flex:1;accent-color:#67e8f9}
+.wtag{position:absolute;left:50%;bottom:50px;transform:translateX(-50%);white-space:nowrap;background:#0b1016ee;border:1px solid #22c55e;color:#e8eef5;border-radius:8px;padding:3px 7px;font:700 11px Inter}
+.toast{position:absolute;left:50%;top:76px;transform:translateX(-50%);background:#111821;border:1px solid #3b82f6;padding:8px 14px;border-radius:10px;font-size:13px;z-index:30;opacity:0;transition:.3s;pointer-events:none;max-width:80vw}
+.toast.on{opacity:1}
+.loader{position:fixed;inset:0;background:var(--bg);z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;transition:opacity .6s}
+.loader .ring{width:46px;height:46px;border:3px solid #243142;border-top-color:#38bdf8;border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.reveal{animation:rise .6s both}@keyframes rise{from{opacity:0;transform:translateY(8px)}}
+@media (max-width:900px){
+  .map{inset:0 0 46% 0}
+  aside{top:auto;height:46%;width:100%;border-right:0;border-top:1px solid var(--line)}
+  .brand span,.tab i{display:none}.tools .hide-s{display:none}.legend{display:none}
+  header{gap:8px;padding:0 8px}.tab{padding:7px 9px;font-size:12px}
+}
+</style>
+</head>
+<body>
+<div class="loader" id="loader"><div class="ring"></div><div style="color:#8d9bb0;font-size:13px">Loading Madinah data…</div></div>
+<header>
+  <div class="brand"><b>Madinah Heat Analysis · Cooling &amp; Pedestrian Movement</b><span>Tasks 5 &amp; 6 · open-source data (OSM/Geofabrik) · network walk model</span></div>
+  <div class="tabs">
+    <button class="tab on" data-v="v1"><i>01</i>Cooling Priority Areas</button>
+    <button class="tab" data-v="v2"><i>02</i>Pedestrian Movement</button>
+  </div>
+  <div class="tools">
+    <div class="seg" id="base"><button class="on" data-b="dark">Dark</button><button data-b="sat">Satellite</button></div>
+    <button class="btn" id="b3d">3D</button>
+    <button class="btn hide-s" id="btour">▶ Tour</button>
+    <button class="btn hide-s" id="bpng">⤓ PNG</button>
+  </div>
+</header>
+<div class="toast" id="toast"></div>
+
+<section class="view on" id="v1">
+  <aside>
+    <div class="kicker">Map 01 · Task 5</div>
+    <h1>Priority Areas for Cooling</h1>
+    <ul class="pts">
+      <li><b>Where:</b> mosques · schools · bus · malls · parks · walkways · junctions</li>
+      <li><b>Zone:</b> 20 m cooling perimeter around each building</li>
+      <li><b>Output:</b> ☂ umbrellas (short‑term) · 🌳 trees (long‑term)</li>
+    </ul>
+    <div class="kpis" id="k1"></div>
+    <h3>Cooling Priority Index <span id="cpiArea"></span></h3>
+    <div class="card dist" id="d1"></div>
+    <h3>Action‑Requirement Plan <button class="btn" id="bcsv" style="padding:4px 8px;font-size:11px">⤓ CSV</button></h3>
+    <div class="card">
+      <div class="big2">
+        <div style="background:linear-gradient(135deg,#0e3a4a,#103040)"><b id="nU">0</b><span>☂ Umbrellas · 100 m²<br>short‑term</span></div>
+        <div style="background:linear-gradient(135deg,#123d24,#0f2e1d)"><b id="nT">0</b><span>🌳 Shade trees · 200 m² canopy<br>long‑term</span></div>
+      </div>
+      <div class="subtabs" id="opt"><button data-o="umb" class="on">☂ Umbrellas</button><button data-o="tree">🌳 Trees</button><button data-o="both">☂ + 🌳 Both</button><button data-o="none">Hide</button></div>
+      <table class="plan" id="ptab"></table>
+      <div class="rng">Min. suitability <input type="range" id="smin" min="55" max="95" step="5" value="55"><b id="sminv" style="color:#fff;min-width:74px;text-align:right">all</b></div>
+      <div class="note" id="pnote"></div>
+    </div>
+    <h3>Why here? · Umbrella suitability</h3>
+    <div class="card method" id="suitbox"></div>
+    <h3>Expected cooling effect</h3>
+    <div class="card method" id="eff"></div>
+    <h3>Layers</h3>
+    <div class="chips" id="cat1"></div>
+    <div class="chips" id="uel" style="margin-top:8px"></div>
+    <div class="toggles" style="margin-top:10px" id="t1"></div>
+    <h3>Top priority sites</h3>
+    <input class="srch" id="q1" placeholder="🔎 Search any mosque / school / mall / park…" dir="auto">
+    <div class="subtabs" id="st1"></div>
+    <div class="list" id="l1"></div>
+    <h3>Method</h3>
+    <div class="card method" id="m1"></div>
+  </aside>
+  <div class="map" id="map1"></div>
+  <div class="seg mopt" id="opt2"><button data-o="umb" class="on">☂ Umbrellas</button><button data-o="tree">🌳 Trees</button><button data-o="both">Both</button><button data-o="none">Off</button></div>
+  <div class="legend" id="lg1"></div>
+</section>
+
+<section class="view" id="v2">
+  <aside>
+    <div class="kicker">Map 02 · Task 6</div>
+    <h1>Major Pedestrian Movement Patterns</h1>
+    <ul class="pts">
+      <li><b>Answer:</b> yes, as a <b>modelled</b> pattern from open data</li>
+      <li><b>Index:</b> footpaths + destinations + built density</li>
+      <li><b>Time:</b> real walking minutes on the OSM network</li>
+      <li><b>Explore:</b> click anywhere to see walking minutes from that spot</li>
+    </ul>
+    <div class="kpis" id="k2"></div>
+    <h3>Point‑to‑point walking time</h3>
+    <div class="card">
+      <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn" id="broute">✚ Pick A → B</button><button class="btn" id="bcool">🚶 Nearest cool spot</button><button class="btn" id="brclr">Clear</button></div>
+      <div id="rinfo" class="method" style="margin-top:8px;color:var(--mut)"><ul class="pts" style="margin:0">
+        <li><b>Pick A → B:</b> fastest vs. cool route + minute markers</li>
+        <li><b>Nearest cool spot:</b> walker goes to the closest ☂ umbrella</li>
+        <li>☂ shade stops: walker rests under proposed umbrellas</li></ul></div>
+    </div>
+    <h3>Walking catchment from…</h3>
+    <div class="card">
+      <div class="subtabs" id="orig"></div>
+      <div class="play"><button class="btn" id="bplay">▶ Play</button><input type="range" id="tslider" min="0" max="15" step="0.1" value="15"><div class="tbig" id="tval">15 min</div></div>
+      <div class="ramp" style="background:linear-gradient(90deg,#22d3ee,#a3e635 33%,#ffd166 66%,#f43f5e)"></div>
+      <div class="rampl"><span>0</span><span>5 min</span><span>10 min</span><span>15 min</span></div>
+      <div class="dist" id="cov" style="margin-top:10px"></div>
+    </div>
+    <h3>Pedestrian Movement Index</h3>
+    <div class="card dist" id="d2"></div>
+    <h3>Layers</h3>
+    <div class="toggles" id="t2"></div>
+    <h3>Cross‑check · PedestrianCatch</h3>
+    <div class="card method" id="pcbox"></div>
+    <h3>Method</h3>
+    <div class="card method" id="m2"></div>
+  </aside>
+  <div class="map" id="map2"></div>
+  <div class="legend" id="lg2"></div>
+</section>
+
+<script>
+const D = /*__DATA__*/null;
+const S = D.stats, P = D.plan;
+const CPI_COL={1:'#3a4a63',2:'#f4c95d',3:'#f59342',4:'#e4473c',5:'#c0134f'};
+const CPI_LBL={1:'Low',2:'Moderate',3:'High',4:'Very High',5:'Critical'};
+const PMI_COL={1:'#2a2350',2:'#5b2a86',3:'#a3307e',4:'#ec6a4c',5:'#ffd166'};
+const PMI_LBL={1:'Very Low',2:'Low',3:'Medium',4:'High',5:'Very High'};
+const CAT={Mosque:{c:'#2dd4bf',l:'Mosques'},School:{c:'#a78bfa',l:'Schools'},Bus:{c:'#38bdf8',l:'Bus stations / stops'},Mall:{c:'#f472b6',l:'Shopping malls'},Park:{c:'#4ade80',l:'Parks / playgrounds'}};
+const ORIG={h:{l:'Masjid an‑Nabawi',k:'haram'},b:{l:'Bus stations',k:'bus'},m:{l:'Mosques',k:'mosque'},s:{l:'Schools',k:'school'},l:{l:'Malls',k:'mall'}};
+const UMB='#67e8f9', TREE='#22c55e', SPEED_MS=D.walk_speed;
+const fmt=(n,d=0)=>Number(n).toLocaleString('en-US',{maximumFractionDigits:d,minimumFractionDigits:d});
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const isAr=s=>/[؀-ۿ]/.test(s||'');
+const $=id=>document.getElementById(id);
+function toast(t){const e=$('toast');e.textContent=t;e.classList.add('on');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('on'),2600)}
+const mRad=(m)=>['interpolate',['exponential',2],['zoom'],10,m*1024/142400,22,m*4194304/142400]; // metres -> px at lat 24.5
+
+function baseStyle(){return{version:8,glyphs:'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',sources:{
+  dark:{type:'raster',tiles:['https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}'],tileSize:256,maxzoom:16,attribution:'Basemap © Esri, HERE, Garmin, © OpenStreetMap contributors'},
+  sat:{type:'raster',tiles:['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],tileSize:256,maxzoom:19,attribution:'Imagery © Esri, Maxar, Earthstar Geographics'},
+  lbl:{type:'raster',tiles:['https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}'],tileSize:256,maxzoom:16}},
+  layers:[{id:'bg',type:'background',paint:{'background-color':'#0b1016'}},{id:'dark',type:'raster',source:'dark'},
+          {id:'sat',type:'raster',source:'sat',layout:{visibility:'none'},paint:{'raster-saturation':-0.3,'raster-brightness-max':0.8}}]}}
+const bbox=(()=>{let a=[180,90,-180,-90];D.bnd.features[0].geometry.coordinates.forEach(p=>p[0].forEach(([x,y])=>{a[0]=Math.min(a[0],x);a[1]=Math.min(a[1],y);a[2]=Math.max(a[2],x);a[3]=Math.max(a[3],y)}));return a})();
+function mkMap(id){
+  const m=new maplibregl.Map({container:id,style:baseStyle(),bounds:bbox,fitBoundsOptions:{padding:30},attributionControl:{compact:true},preserveDrawingBuffer:true,maxPitch:70});
+  m.addControl(new maplibregl.NavigationControl({visualizePitch:true}),'top-right');
+  m.addControl(new maplibregl.ScaleControl({unit:'metric'}),'bottom-left');
+  m.on('load',()=>m.addLayer({id:'lbl',type:'raster',source:'lbl',paint:{'raster-opacity':0.85}}));
+  return m;
+}
+function haramMarker(map,label){const el=document.createElement('div');el.className='haram';el.innerHTML=`<div class="hlabel">${label}</div>`;new maplibregl.Marker({element:el}).setLngLat(D.haram).addTo(map)}
+function addBoundary(map){map.addSource('bnd',{type:'geojson',data:D.bnd});
+  map.addLayer({id:'bnd-glow',type:'line',source:'bnd',paint:{'line-color':'#38bdf8','line-width':6,'line-opacity':.18,'line-blur':4}});
+  map.addLayer({id:'bnd',type:'line',source:'bnd',paint:{'line-color':'#7dd3fc','line-width':1.4,'line-dasharray':[3,2]}})}
+function distRows(el,rows,max){el.innerHTML=rows.map(r=>`<div class="drow"><span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${r.c};margin-right:6px"></span>${r.l}</span><div class="dbar"><div style="width:${Math.max(1,100*r.v/max)}%;background:${r.c}"></div></div><span class="n">${r.t}</span></div>`).join('')}
+function bar(l,v,c){v=Math.max(0,Math.min(1,+v||0));return`<div class="b"><span>${l}</span><div class="t"><div style="width:${Math.round(100*v)}%;background:${c}"></div></div><span style="text-align:right">${Math.round(v*100)}</span></div>`}
+function kpis(el,arr){el.innerHTML=arr.map((k,i)=>`<div class="kpi reveal" style="--k:${k.k};animation-delay:${i*70}ms"><div class="v">${k.v}<small>${k.u||''}</small></div><div class="l">${k.l}</div></div>`).join('')}
+function countUp(el,to){const t0=performance.now();const f=n=>{const r=Math.min(1,(n-t0)/1400);el.textContent=fmt(Math.round(to*(1-Math.pow(1-r,3))));if(r<1)requestAnimationFrame(f)};requestAnimationFrame(f)}
+
+// hex lookup (nearest centroid = containing hexagon)
+const HX=D.hex.features.map(f=>{const r=f.geometry.coordinates[0];let x=0,y=0;const n=r.length-1;for(let i=0;i<n;i++){x+=r[i][0];y+=r[i][1]}return[x/n,y/n,f.properties]});
+const HG=new Map(),HC=0.004;HX.forEach((h,i)=>{const k=Math.floor(h[0]/HC)+','+Math.floor(h[1]/HC);(HG.get(k)||HG.set(k,[]).get(k)).push(i)});
+function hexAt(lon,lat){let best=null,bd=1e9;const cx=Math.floor(lon/HC),cy=Math.floor(lat/HC);for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++){(HG.get((cx+a)+','+(cy+b))||[]).forEach(i=>{const h=HX[i],d=(h[0]-lon)**2+(h[1]-lat)**2;if(d<bd){bd=d;best=h}})}return bd<0.0000025?best[2]:null}
+
+// ===================== MAP 1 =====================
+const map1=mkMap('map1');
+let m1Ready=false,cat1On=new Set(Object.keys(CAT)),topCat='all',pulse1=true,shadeOpt='umb',uelOn=new Set(['p','j','c','w']),sMin=55;
+// suitability cells + minute labels (compact arrays -> GeoJSON)
+const SUIT={type:'FeatureCollection',features:[]};{const o=D.suit.o,p=D.suit.p;for(let i=0;i<p.length;i+=3)SUIT.features.push({type:'Feature',properties:{s:p[i+2]},geometry:{type:'Point',coordinates:[o[0]+p[i]/1e5,o[1]+p[i+1]/1e5]}})}
+const CMIN={type:'FeatureCollection',features:[]};{const o=D.cmin.o,p=D.cmin.p,K='hbmsl';for(let i=0;i<p.length;i+=4)CMIN.features.push({type:'Feature',properties:{m:p[i+2],k:K[p[i+3]]},geometry:{type:'Point',coordinates:[o[0]+p[i]/1e5,o[1]+p[i+1]/1e5]}})}
+const STREE={type:'FeatureCollection',features:[]};{const o=D.stree.o,p=D.stree.p;for(let i=0;i<p.length;i+=2)STREE.features.push({type:'Feature',properties:{},geometry:{type:'Point',coordinates:[o[0]+p[i]/1e5,o[1]+p[i+1]/1e5]}})}
+const SUIT_COL=['interpolate',['linear'],['get','s'],35,'#334155',55,'#f59e0b',75,'#22d3ee',95,'#a5f3fc'];
+// walking minutes from any spot (per-node times precomputed on the network)
+function walkTimes(ll){const n=snapNode(ll);if(n<0)return null;const g=buildGraph(),d=Math.hypot((g.lon[n]-ll.lng)*101200,(g.lat[n]-ll.lat)*110900),add=d/SPEED_MS/60,o={};
+  Object.keys(ORIG).forEach(k=>{const v=D.ntime[k][n];o[k]=v<0?null:v/10+add});return{t:o,snap:d}}
+function timesHTML(w){if(!w)return'';const I={h:'🕋 Masjid an‑Nabawi',b:'🚌 Bus stop',m:'🕌 Mosque',s:'🏫 School',l:'🛍 Mall'};
+  return`<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--line);font-size:12px"><b>🚶 Walking time from here</b>${Object.entries(I).map(([k,l])=>`<div style="display:flex;justify-content:space-between;margin-top:3px"><span>${l}</span><b style="color:${w.t[k]==null?'#8d9bb0':w.t[k]<=5?'#a3e635':w.t[k]<=10?'#ffd166':'#f43f5e'}">${w.t[k]==null?'> 15 min':fmt(w.t[k],1)+' min'}</b></div>`).join('')}</div>`}
+function applyUmbFilter(){if(!m1Ready)return;const f=['all',['in',['get','e'],['literal',[...uelOn,'k']]],['>=',['coalesce',['get','s'],100],sMin>55?sMin:0]];
+  ['umb','umb-dot','umbheat'].forEach(l=>map1.setFilter(l,f));
+  const n=D.umb.features.filter(x=>(uelOn.has(x.properties.e)||x.properties.e==='k')&&(x.properties.s??100)>=(sMin>55?sMin:0)).length;
+  $('sminv').textContent=(sMin>55?'≥ '+sMin:'all')+' · '+fmt(n)+' ☂'}
+(function(){
+  const c=S.cpi_km2,hiSites=Object.values(S.cats).reduce((a,b)=>a+b.hi,0);
+  kpis($('k1'),[
+    {v:fmt(c[5]+c[4],1),u:'km²',l:'Critical + Very High cooling priority area',k:'#c0134f'},
+    {v:fmt(S.perim_n),l:`Building cooling perimeters · ${fmt(S.perim_km2,2)} km² (${fmt(S.perim_fp)} from real footprints)`,k:UMB},
+    {v:fmt(hiSites),u:'sites',l:'Mosques, schools, bus, malls &amp; parks in the top‑25 % tier',k:'#f59342'},
+    {v:fmt(P.summary.Walkway.km,0),u:'km',l:'Priority walkways needing shade (CPI High+)',k:'#2dd4bf'}]);
+  $('cpiArea').textContent=fmt(Object.values(c).reduce((a,b)=>a+b,0))+' km² active';
+  distRows($('d1'),[5,4,3,2,1].map(k=>({l:CPI_LBL[k],c:CPI_COL[k],v:S.cpi_counts[k],t:fmt(c[k],1)+' km²'})),Math.max(...Object.values(S.cpi_counts)));
+  countUp($('nU'),P.tot_umb);countUp($('nT'),P.tot_tree);
+  const rows=[['Mosque','Mosques'],['School','Schools'],['Bus','Bus stations'],['Mall','Shopping malls'],['Park','Parks'],['Walkway','Walkways'],['Junction','Road junctions'],['Crossing','Ped. crossings'],['StreetTree','Street trees (long‑term)']];
+  let tu=0,tt=0,tm=0;
+  $('ptab').innerHTML='<tr><th>Element</th><th>Sites</th><th>Shade m²</th><th>☂</th><th>🌳</th></tr>'+rows.map(([k,l])=>{const r=P.summary[k];if(!r)return'';tu+=r.umb;tt+=r.tree;tm+=r.m2;
+     const n=(k==='Walkway'||k==='StreetTree')?fmt(r.km,0)+' km':fmt(r.sites);return`<tr><td>${l}</td><td>${n}</td><td>${fmt(r.m2)}</td><td>${r.umb?fmt(r.umb):'–'}</td><td>${r.tree?fmt(r.tree):'–'}</td></tr>`}).join('')+
+     `<tr class="tot"><td>Total</td><td></td><td>${fmt(tm)}</td><td>${fmt(tu)}</td><td>${fmt(tt)}</td></tr>`;
+  $('pnote').innerHTML=`<ul class="pts" style="margin:0;font-size:11.5px"><li>1 ☂ = 100 m² · 1 🌳 = 200 m² · <b>same shade, two options</b></li>
+    <li>Only on <b>suitable open cells</b> (score ≥ ${D.suit_w.min}), ${D.suit_w.spacing} m apart</li>
+    <li>Walkways: 1 shade stop every 100 / 150 / 220 m (Critical / VH / High)</li>
+    <li>Every major‑road junction (High+) and every Critical junction: 1 corner umbrella</li>
+    <li>Masjid an‑Nabawi plaza excluded (umbrellas exist)</li>
+    <li><b>Street trees</b>: both sides of every walkable street in High+ zones, every ${D.plan.street.sp} m</li></ul>`;
+  const SW=D.suit_w;
+  $('suitbox').innerHTML=`<div class="formula">S = ${SW.heat}% Heat + ${SW.foot}% Footfall<br>&nbsp;&nbsp;+ ${SW.sun}% Sun exposure + ${SW.access}% Access</div>
+    <ul class="pts" style="margin:0"><li><b>Heat</b>: cooling priority (CPI) of the spot</li><li><b>Footfall</b>: pedestrian index + waiting (gate, stop, crossing)</li>
+    <li><b>Sun</b>: west / south side of building hottest at 15:00</li><li><b>Access</b>: on the sidewalk, ≤ 4 m from walkable edge</li>
+    <li>❌ Not on buildings, roads, existing tree shade</li></ul>
+    <div class="ramp" style="background:linear-gradient(90deg,#334155,#f59e0b 45%,#22d3ee 75%,#a5f3fc)"></div><div class="rampl"><span>35 low</span><span>55 suitable</span><span>100 best</span></div>
+    <div class="note">Zoom in (z15+) to see the 8 m suitability cells; click any ☂ to see <b>why it is there</b>.</div>`;
+  $('eff').innerHTML=`<div class="kpis" style="margin:0 0 8px"><div class="kpi" style="--k:#22c55e"><div class="v">${fmt(P.shade_pct)}<small>%</small></div><div class="l">of priority pedestrian space gets shade</div></div>
+    <div class="kpi" style="--k:#38bdf8"><div class="v">${P.air_dT}<small>°C</small></div><div class="l">air temp. (WRI: −0.33 °C / +10 pp canopy)</div></div></div>
+    <ul class="pts" style="margin:0"><li>Real gain = <b>felt heat (UTCI) under the shade</b>, not air temp.</li><li><b>Next:</b> SOLWEIG before/after UTCI at top sites</li></ul>`;
+  ['opt','opt2'].forEach(id=>$(id).querySelectorAll('button').forEach(b=>b.onclick=()=>{shadeOpt=b.dataset.o;
+    ['opt','opt2'].forEach(j=>$(j).querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.o===shadeOpt)));applyShade()}));
+  $('cat1').innerHTML=Object.entries(CAT).map(([k,v])=>`<div class="chip" data-c="${k}"><span class="d" style="background:${v.c}"></span>${v.l} <span style="color:var(--mut)">${fmt(S.cats[k].n)}</span></div>`).join('');
+  $('cat1').querySelectorAll('.chip').forEach(ch=>ch.onclick=()=>{const k=ch.dataset.c;cat1On.has(k)?cat1On.delete(k):cat1On.add(k);ch.classList.toggle('off');applyCat1()});
+  const T=[['hex1','Cooling Priority Index (hexagons)',1],['suit','Umbrella suitability cells (zoom 15+)',1],['umbheat','Umbrella density (city view)',1],['perim','Cooling perimeters',1],['fp','Building footprints',1],['walk1','Walkways / plazas',1],['parks1','Parks',1],['cross1','Ped. crossings',1],['pulse','Animate critical zones',1]];
+  $('t1').innerHTML=T.map(([k,l,on])=>`<label class="tg"><input type="checkbox" data-k="${k}" ${on?'checked':''}>${l}</label>`).join('');
+  const UEL={p:['Perimeter','#67e8f9'],j:['Junction','#fbbf24'],c:['Crossing','#fde047'],w:['Walkway','#5eead4']};
+  const uc={};D.umb.features.forEach(f=>uc[f.properties.e]=(uc[f.properties.e]||0)+1);
+  $('uel').innerHTML=Object.entries(UEL).map(([k,[l,c]])=>`<div class="chip" data-e="${k}"><span class="d" style="background:${c}"></span>☂ ${l} <span style="color:var(--mut)">${fmt(uc[k]||0)}</span></div>`).join('');
+  $('uel').querySelectorAll('.chip').forEach(ch=>ch.onclick=()=>{const k=ch.dataset.e;uelOn.has(k)?uelOn.delete(k):uelOn.add(k);ch.classList.toggle('off');applyUmbFilter()});
+  $('smin').oninput=()=>{sMin=+$('smin').value;applyUmbFilter()};
+  $('q1').oninput=()=>renderTop();
+  $('t1').querySelectorAll('input').forEach(i=>i.onchange=()=>toggle1(i.dataset.k,i.checked));
+  const tabs=[['all','All'],['Mosque','Mosques'],['School','Schools'],['Bus','Bus'],['Mall','Malls'],['Park','Parks']];
+  $('st1').innerHTML=tabs.map(([k,l])=>`<button data-k="${k}" class="${k==='all'?'on':''}">${l}</button>`).join('');
+  $('st1').querySelectorAll('button').forEach(b=>b.onclick=()=>{$('st1').querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on');topCat=b.dataset.k;renderTop()});
+  renderTop();
+  $('m1').innerHTML=`<div class="formula">CPI = 40% Sensitive uses + 35% Pedestrian movement + 25% Shade deficit</div>
+   <ul class="pts" style="margin:0"><li><b>Sensitive uses</b>: 300 m kernel · Haram 10, mosque/school 3, bus/mall 2.5, park 1.5</li>
+   <li><b>Shade deficit</b> = 1 − green cover (OSM)</li><li><b>Classes</b>: Critical top 5 % · VH 85–95 % · High 65–85 %</li>
+   <li><b>Perimeter</b>: 20 m ring outside each OSM footprint</li></ul>
+   <div class="note">OSM: only ${fmt(S.trees)} trees mapped. <b>Next:</b> plug in Task 1 NDVI/LCC + Task 2–4 LST.</div>`;
+})();
+function renderTop(){
+  const q=($('q1').value||'').trim().toLowerCase();
+  const arr=q?D.sites.features.map(f=>({...f.properties,lon:f.geometry.coordinates[0],lat:f.geometry.coordinates[1]})).filter(s=>(topCat==='all'||s.cat===topCat)&&((s.name||'').toLowerCase().includes(q)||CAT[s.cat].l.toLowerCase().includes(q))).sort((a,b)=>b.score-a.score).slice(0,40):(D.top[topCat]||[]);
+  if(q&&!arr.length){$('l1').innerHTML='<div class="method" style="color:var(--mut)">No match.</div>';return}
+  $('l1').innerHTML=arr.map((s,i)=>`<div class="item" data-i="${s.id}"><span class="r">${i+1}</span><span class="nm ${isAr(s.name)?'ar':''}" dir="auto">${esc(s.name)}<small>${CAT[s.cat].l} · ${CPI_LBL[s.c]}</small></span><span class="badge" style="background:${CPI_COL[s.c]};color:${s.c<=2?'#111':'#fff'}">${s.score}</span></div>`).join('');
+  $('l1').querySelectorAll('.item').forEach(e=>e.onclick=()=>flyToSite(+e.dataset.i));
+}
+const planById=new Map(P.top.filter(r=>r.id!=null).map(r=>[r.id,r]));
+function flyToSite(id){const f=D.sites.features[id];if(!f)return;switchView('v1');
+  map1.flyTo({center:f.geometry.coordinates,zoom:17,pitch:55,bearing:-20,duration:2200,essential:true});
+  map1.once('moveend',()=>sitePopup(f.properties,f.geometry.coordinates))}
+function sitePopup(p,ll){
+  document.querySelectorAll('.maplibregl-popup').forEach(x=>x.remove());
+  const ps=P.site&&P.site[p.id],pl=ps?{umbrellas:ps[0],trees:ps[1],suit_m2:ps[2],note:ps[3]}:null;
+  new maplibregl.Popup({maxWidth:'310px'}).setLngLat(ll).setHTML(`<div class="pp"><h5 class="${isAr(p.name)?'ar':''}" dir="auto">${esc(p.name||'Unnamed '+p.cat.toLowerCase())}</h5>
+   <div class="s">${CAT[p.cat].l} · tier <b style="color:${CPI_COL[p.c]}">${CPI_LBL[p.c]}</b> · score ${p.score}</div>
+   ${bar('Cooling (CPI)',p.v,CPI_COL[p.c])}${bar('Pedestrian (PMI)',p.p,'#ffd166')}${bar('Shade deficit',p.sh,'#f59342')}
+   ${pl?`<div class="act"><span>☂ <b>${pl.umbrellas}</b> umbrellas</span><span>🌳 <b>${pl.trees}</b> trees</span><span style="color:var(--mut)">${fmt(pl.suit_m2)} m² suitable</span></div>${pl.note?`<div class="s" style="margin-top:6px">${esc(pl.note)}</div>`:''}`:''}
+   ${timesHTML(walkTimes({lng:ll[0],lat:ll[1]}))}</div>`).addTo(map1);
+}
+function applyCat1(){if(!m1Ready)return;const f=['in',['get','cat'],['literal',[...cat1On]]];
+  ['sites1','sites1-glow','perim-fill','perim-line'].forEach(l=>map1.setFilter(l,f));map1.setFilter('sites1-ring',['all',f,['>=',['get','c'],5]]);
+  map1.setLayoutProperty('parks1','visibility',cat1On.has('Park')&&$('t1').querySelector('[data-k=parks1]').checked?'visible':'none')}
+function applyShade(){if(!m1Ready)return;const u=shadeOpt==='umb'||shadeOpt==='both',t=shadeOpt==='tree'||shadeOpt==='both';
+  ['umb','umb-dot'].forEach(l=>map1.setLayoutProperty(l,'visibility',u?'visible':'none'));map1.setLayoutProperty('umbheat','visibility',u&&$('t1').querySelector('[data-k=umbheat]').checked?'visible':'none');
+  ['tree','stree','streeheat'].forEach(l=>map1.setLayoutProperty(l,'visibility',t?'visible':'none'));
+  toast(shadeOpt==='none'?'Shade layers hidden':`${u?'☂ '+fmt(P.tot_umb)+' umbrellas':''}${u&&t?' + ':''}${t?'🌳 '+fmt(P.tot_tree)+' trees':''}${map1.getZoom()<13.5?' · zoom in for exact spots':''}`)}
+function toggle1(k,on){if(!m1Ready)return;const v=on?'visible':'none';
+  if(k==='pulse'){pulse1=on;return}
+  if(k==='hex1'){map1.setLayoutProperty('hex1','visibility',on&&!is3D1?'visible':'none');map1.setLayoutProperty('hex1-3d','visibility',on&&is3D1?'visible':'none');map1.setLayoutProperty('hex1-crit',' visibility'.trim(),v);return}
+  ({perim:['perim-fill','perim-line'],fp:['fp'],walk1:['walk1','walk1-glow'],parks1:['parks1'],cross1:['cross1'],suit:['suit'],umbheat:['umbheat']}[k]||[]).forEach(l=>map1.setLayoutProperty(l,'visibility',v))}
+map1.on('load',()=>{
+  ['hex','perim','fp','parks','walk','sites','umb','trees_p'].forEach(k=>map1.addSource(k,{type:'geojson',data:D[k]}));
+  map1.addSource('pcnet',{type:'geojson',data:D.pcnet});
+  const cc=['match',['get','c'],1,CPI_COL[1],2,CPI_COL[2],3,CPI_COL[3],4,CPI_COL[4],5,CPI_COL[5],'#000'];
+  map1.addLayer({id:'hex1',type:'fill',source:'hex',filter:['>=',['get','c'],1],paint:{'fill-color':cc,'fill-opacity':['interpolate',['linear'],['zoom'],12,['match',['get','c'],1,0.28,2,0.45,3,0.55,4,0.62,5,0.7,0],16,['match',['get','c'],1,0.12,2,0.2,3,0.28,4,0.32,5,0.36,0]],'fill-outline-color':'rgba(0,0,0,0.15)'}},'lbl');
+  map1.addLayer({id:'hex1-3d',type:'fill-extrusion',source:'hex',filter:['>=',['get','c'],2],layout:{visibility:'none'},paint:{'fill-extrusion-color':cc,'fill-extrusion-height':['*',['^',['get','v'],2],2200],'fill-extrusion-opacity':0.85}},'lbl');
+  map1.addLayer({id:'hex1-crit',type:'line',source:'hex',filter:['==',['get','c'],5],paint:{'line-color':'#ff6b8b','line-width':1.4}},'lbl');
+  map1.addLayer({id:'parks1',type:'fill',source:'parks',paint:{'fill-color':'#4ade80','fill-opacity':0.35,'fill-outline-color':'#4ade80'}});
+  map1.addLayer({id:'walk1-glow',type:'line',source:'walk',paint:{'line-color':'#2dd4bf','line-width':['interpolate',['linear'],['zoom'],11,2,17,12],'line-opacity':0.18,'line-blur':3}});
+  map1.addLayer({id:'walk1',type:'line',source:'walk',paint:{'line-color':'#5eead4','line-width':['interpolate',['linear'],['zoom'],11,0.7,17,3]}});
+  map1.addLayer({id:'cross1',type:'line',source:'pcnet',minzoom:13.5,filter:['==',['get','w'],1],paint:{'line-color':'#fde047','line-width':['interpolate',['linear'],['zoom'],14,1,18,4],'line-dasharray':[1,1]}});
+  map1.addLayer({id:'perim-fill',type:'fill',source:'perim',paint:{'fill-color':UMB,'fill-opacity':['interpolate',['linear'],['zoom'],11,0.55,16,0.3]}});
+  map1.addLayer({id:'perim-line',type:'line',source:'perim',minzoom:13,paint:{'line-color':'#a5f3fc','line-width':1}});
+  map1.addLayer({id:'fp',type:'fill',source:'fp',paint:{'fill-color':'#0b1016','fill-opacity':0.7,'fill-outline-color':'#a5f3fc'}});
+  map1.addSource('suit',{type:'geojson',data:SUIT});
+  map1.addLayer({id:'suit',type:'circle',source:'suit',minzoom:14.5,paint:{'circle-radius':mRad(3.6),'circle-color':SUIT_COL,'circle-opacity':['interpolate',['linear'],['zoom'],14.5,0,15.5,0.55]}});
+  map1.addLayer({id:'umbheat',type:'heatmap',source:'umb',maxzoom:14.5,paint:{'heatmap-radius':['interpolate',['linear'],['zoom'],9,4,14,18],'heatmap-intensity':['interpolate',['linear'],['zoom'],9,0.5,14,1.2],
+    'heatmap-color':['interpolate',['linear'],['heatmap-density'],0,'rgba(0,0,0,0)',0.15,'rgba(14,116,144,.45)',0.4,'#22d3ee',0.7,'#a5f3fc',1,'#ffffff'],'heatmap-opacity':['interpolate',['linear'],['zoom'],12,0.85,14.5,0]}});
+  map1.addSource('stree',{type:'geojson',data:STREE});
+  map1.addLayer({id:'streeheat',type:'heatmap',source:'stree',maxzoom:14.5,layout:{visibility:'none'},paint:{'heatmap-radius':['interpolate',['linear'],['zoom'],9,2,14,10],'heatmap-intensity':['interpolate',['linear'],['zoom'],9,0.15,14,0.6],
+    'heatmap-color':['interpolate',['linear'],['heatmap-density'],0,'rgba(0,0,0,0)',0.2,'rgba(21,128,61,.45)',0.5,'#22c55e',0.8,'#86efac',1,'#f0fdf4'],'heatmap-opacity':['interpolate',['linear'],['zoom'],12,0.85,14.5,0]}});
+  map1.addLayer({id:'stree',type:'circle',source:'stree',minzoom:13,layout:{visibility:'none'},paint:{'circle-radius':['interpolate',['exponential',2],['zoom'],13,1.2,15,2.6,17,7.36,22,235.6],'circle-color':TREE,'circle-opacity':0.45,'circle-stroke-color':'#bbf7d0','circle-stroke-width':['interpolate',['linear'],['zoom'],15,0,17,0.8]}});
+  map1.addLayer({id:'tree',type:'circle',source:'trees_p',minzoom:12,layout:{visibility:'none'},paint:{'circle-radius':['interpolate',['exponential',2],['zoom'],12,2.2,15,3.6,17,7.36,22,235.6],'circle-color':TREE,'circle-opacity':0.55,'circle-stroke-color':'#bbf7d0','circle-stroke-width':1}});
+  map1.addLayer({id:'umb',type:'circle',source:'umb',minzoom:12,paint:{'circle-radius':['interpolate',['exponential',2],['zoom'],12,1.8,15,2.8,17,5.19,22,166.1],'circle-color':['match',['get','e'],'j','#fbbf24','c','#fde047','w','#5eead4',UMB],'circle-opacity':0.35,'circle-stroke-color':'#e0f7ff','circle-stroke-width':['interpolate',['linear'],['zoom'],13,0.4,18,1.6]}});
+  map1.addLayer({id:'umb-dot',type:'circle',source:'umb',minzoom:15,paint:{'circle-radius':['interpolate',['linear'],['zoom'],12,0.8,18,2.5],'circle-color':'#ffffff'}});
+  const catCol=['match',['get','cat'],...Object.entries(CAT).flatMap(([k,v])=>[k,v.c]),'#fff'];
+  map1.addLayer({id:'sites1-glow',type:'circle',source:'sites',paint:{'circle-color':catCol,'circle-radius':['interpolate',['linear'],['zoom'],10,4,16,16],'circle-opacity':0.25,'circle-blur':1}});
+  map1.addLayer({id:'sites1-ring',type:'circle',source:'sites',filter:['>=',['get','c'],5],paint:{'circle-color':'rgba(0,0,0,0)','circle-radius':8,'circle-stroke-color':'#ff6b8b','circle-stroke-width':2}});
+  map1.addLayer({id:'sites1',type:'circle',source:'sites',paint:{'circle-color':catCol,'circle-radius':['interpolate',['linear'],['zoom'],10,['+',1.6,['*',0.4,['get','c']]],16,['+',4,['*',1.3,['get','c']]]],'circle-stroke-color':'#0b1016','circle-stroke-width':1}});
+  addBoundary(map1);haramMarker(map1,'Masjid an‑Nabawi');
+  m1Ready=true;
+  map1.on('click','sites1',e=>{const f=e.features[0];sitePopup(f.properties,f.geometry.coordinates)});
+  map1.on('click',e=>{if(map1.queryRenderedFeatures(e.point,{layers:['sites1']}).length)return;
+    const bb=[[e.point.x-6,e.point.y-6],[e.point.x+6,e.point.y+6]];
+    const u=(shadeOpt==='umb'||shadeOpt==='both')?map1.queryRenderedFeatures(bb,{layers:['umb']})[0]:null;
+    if(u){const p=u.properties,EL={p:'Building / park perimeter',j:'Road junction corner',c:'Pedestrian crossing',w:'Walkway shade stop'};
+      new maplibregl.Popup({maxWidth:'300px'}).setLngLat(u.geometry.coordinates).setHTML(`<div class="pp"><h5>☂ Umbrella · suitability <span style="color:${p.s>=75?'#22d3ee':'#f59e0b'}">${p.s}</span>/100</h5>
+        <div class="s">${EL[p.e]||p.e}${p.n?' · <span dir="auto">'+esc(p.n)+'</span>':''} · zone ${CPI_LBL[p.c]||'–'}</div>
+        ${bar('Heat (CPI)',p.h/100,'#e4473c')}${bar('Footfall',p.f/100,'#ffd166')}${bar('Sun exposure',p.x/100,'#f59342')}${bar('Sidewalk access',p.a/100,'#22d3ee')}
+        ${timesHTML(walkTimes(e.lngLat))}</div>`).addTo(map1);return}
+    const sc=map1.getZoom()>=14.5?map1.queryRenderedFeatures(bb,{layers:['suit']})[0]:null;
+    const h=map1.queryRenderedFeatures(e.point,{layers:['hex1','hex1-3d']})[0];const p=h?h.properties:null;
+    new maplibregl.Popup({maxWidth:'300px'}).setLngLat(e.lngLat).setHTML(`<div class="pp">${p?`<h5>Cooling priority: <span style="color:${CPI_COL[p.c]}">${CPI_LBL[p.c]}</span></h5><div class="s">CPI ${(+p.v).toFixed(2)}${sc?` · umbrella suitability <b style="color:#fff">${sc.properties.s}</b>/100`:''}</div>
+      ${bar('Sensitive uses',p.s,'#2dd4bf')}${bar('Pedestrian PMI',p.p,'#ffd166')}${bar('Shade deficit',p.sh,'#f59342')}`:'<h5>Outside priority zones</h5>'}
+      ${timesHTML(walkTimes(e.lngLat))}</div>`).addTo(map1)});
+  ['umb','suit'].forEach(l=>{map1.on('mouseenter',l,()=>map1.getCanvas().style.cursor='pointer');map1.on('mouseleave',l,()=>map1.getCanvas().style.cursor='')});
+  applyUmbFilter();
+  ['sites1','hex1'].forEach(l=>{map1.on('mouseenter',l,()=>map1.getCanvas().style.cursor='pointer');map1.on('mouseleave',l,()=>map1.getCanvas().style.cursor='')});
+  setTimeout(()=>{const L=$('loader');if(L){L.style.opacity=0;L.style.pointerEvents='none';setTimeout(()=>L.remove(),700)}map1.easeTo({center:[D.haram[0]+0.005,D.haram[1]-0.01],zoom:11.6,pitch:35,bearing:-12,duration:3200})},600);
+});
+$('lg1').innerHTML=`<h4>Cooling Priority Index</h4>${[5,4,3,2,1].map(k=>`<div class="lg"><span class="sw" style="background:${CPI_COL[k]}"></span>${CPI_LBL[k]}</div>`).join('')}
+  <div class="sep"></div><div class="lg"><span class="sw" style="background:${UMB}"></span>Cooling perimeter around building</div>
+  <div class="lg"><span class="sw l" style="background:#5eead4"></span>Walkway / pedestrian zone</div><div class="lg"><span class="sw l" style="background:#fde047"></span>Road crossing (waiting in sun)</div>
+  <div class="lg"><span class="sw" style="background:#4ade80;opacity:.6"></span>Park / green area</div>
+  <div class="sep"></div><div class="lg"><span class="sw c" style="background:${UMB};border:1px solid #e0f7ff"></span>☂ at building / park</div><div class="lg"><span class="sw c" style="background:#fbbf24"></span>☂ at road junction</div>
+  <div class="lg"><span class="sw c" style="background:#fde047"></span>☂ at ped. crossing</div><div class="lg"><span class="sw c" style="background:#5eead4"></span>☂ walkway shade stop</div>
+  <div class="lg"><span class="sw c" style="background:${TREE}99;border:1px solid #bbf7d0"></span>🌳 shade tree (200 m²)</div>
+  <div style="font-size:11.5px;color:#d5dde8;margin-top:6px">Umbrella suitability (z15+)</div><div class="ramp" style="background:linear-gradient(90deg,#334155,#f59e0b 45%,#22d3ee 75%,#a5f3fc)"></div><div class="rampl"><span>35</span><span>55</span><span>100</span></div>
+  <div class="sep"></div>${Object.values(CAT).map(v=>`<div class="lg"><span class="sw c" style="background:${v.c}"></span>${v.l}</div>`).join('')}
+  <div class="lg"><span class="sw c" style="border:2px solid #ff6b8b"></span>Critical‑tier site (top 10 %)</div>`;
+$('bcsv').onclick=()=>{
+  const rows=[['Rank','Category','Name','Tier','Score','Zone m2','Shade demand m2','Umbrellas 100m2','Trees 200m2','Note']];
+  P.top.forEach((r,i)=>rows.push([i+1,r.cat,r.name,r.tl,r.score,r.zone_m2,r.demand_m2,r.umbrellas,r.trees,r.note]));
+  rows.push([]);Object.entries(P.summary).forEach(([k,r])=>rows.push(['',k,'','','','',r.m2,r.umb,r.tree,'']));
+  const csv='﻿'+rows.map(r=>r.map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='Madinah_Action_Requirement_Plan_top40.csv';a.click()};
+
+// ===================== MAP 2 =====================
+let map2=null,m2Ready=false,origin='h',T=15,playing=false,show={umb2:true,cmin:true,trips:true,corr:true,catch:true,hex2:true,hot:true,pcnet:false,pc:false,pcp:false};
+function initMap2(){if(map2)return;map2=mkMap('map2');
+  map2.on('load',()=>{
+    ['hex','hot','corr','catch','sites','pcnet'].forEach(k=>map2.addSource(k,{type:'geojson',data:D[k]}));
+    map2.addSource('pch',{type:'geojson',data:D.pc_hull});map2.addSource('pcp',{type:'geojson',data:D.pc_pts});
+    map2.addSource('trips',{type:'geojson',data:{type:'FeatureCollection',features:[]},lineMetrics:true});
+    map2.addSource('heads',{type:'geojson',data:{type:'FeatureCollection',features:[]}});
+    map2.addSource('route',{type:'geojson',data:{type:'FeatureCollection',features:[]}});
+    map2.addSource('rmin',{type:'geojson',data:{type:'FeatureCollection',features:[]}});
+    const pc=['match',['get','pc'],1,PMI_COL[1],2,PMI_COL[2],3,PMI_COL[3],4,PMI_COL[4],5,PMI_COL[5],'#000'];
+    map2.addLayer({id:'hex2',type:'fill',source:'hex',filter:['>=',['get','pc'],2],layout:{visibility:'none'},paint:{'fill-color':pc,'fill-opacity':0.5}},'lbl');
+    map2.addLayer({id:'hex2-3d',type:'fill-extrusion',source:'hex',filter:['>=',['get','pc'],2],paint:{'fill-extrusion-color':pc,'fill-extrusion-height':['*',['^',['get','p'],2.2],900],'fill-extrusion-opacity':['interpolate',['linear'],['zoom'],11,0.7,13.5,0.45,15,0.08]}},'lbl');
+    map2.addLayer({id:'hot',type:'line',source:'hot',paint:{'line-color':'#ffd166','line-width':1.6,'line-dasharray':[2,1.5],'line-opacity':0.9}});
+    map2.addLayer({id:'pcnet',type:'line',source:'pcnet',layout:{visibility:'none'},paint:{'line-color':['match',['get','w'],1,'#fde047','#c4b5fd'],'line-width':['interpolate',['linear'],['zoom'],13,0.5,18,2.5],'line-opacity':0.75}});
+    map2.addLayer({id:'catch',type:'line',source:'catch',paint:{'line-width':['interpolate',['linear'],['zoom'],11,1,16,3.5],'line-opacity':0.9}});
+    map2.addLayer({id:'corr-base',type:'line',source:'corr',paint:{'line-color':'#fff','line-opacity':0.16,'line-width':['interpolate',['linear'],['zoom'],11,['*',['get','p'],2.2],16,['*',['get','p'],8]]}});
+    map2.addLayer({id:'corr-flow',type:'line',source:'corr',paint:{'line-color':['match',['get','k'],'ped','#7dd3fc','#ffffff'],'line-opacity':0.9,'line-width':['interpolate',['linear'],['zoom'],11,['*',['get','p'],1.6],16,['*',['get','p'],5]],'line-dasharray':[0,4,3]}});
+    map2.addLayer({id:'trips',type:'line',source:'trips',layout:{'line-cap':'round'},paint:{'line-width':['interpolate',['linear'],['zoom'],11,1.6,16,4],'line-gradient':['interpolate',['linear'],['line-progress'],0,'rgba(255,209,102,0)',1,'rgba(255,209,102,0.95)']}});
+    map2.addLayer({id:'heads',type:'circle',source:'heads',maxzoom:14.6,paint:{'circle-radius':['interpolate',['linear'],['zoom'],11,1.8,16,4.5],'circle-color':'#fff7d6','circle-blur':0.3}});
+    map2.addLayer({id:'pch',type:'line',source:'pch',layout:{visibility:'none'},paint:{'line-color':'#818cf8','line-width':['match',['get','m'],10,2.6,1],'line-opacity':['match',['get','m'],10,1,0.5]}});
+    map2.addLayer({id:'pcp',type:'circle',source:'pcp',layout:{visibility:'none'},paint:{'circle-radius':['interpolate',['linear'],['zoom'],13,2,18,6],'circle-color':['interpolate',['linear'],['get','t'],0,'#1e3a8a',5,'#6366f1',10,'#e0e7ff'],'circle-stroke-color':'#fff','circle-stroke-width':0.6}});
+    map2.addLayer({id:'pcp-t',type:'symbol',source:'pcp',minzoom:16,layout:{visibility:'none','text-field':['concat',['to-string',['get','t']],'′'],'text-font':['Open Sans Semibold'],'text-size':10,'text-offset':[0,1.1]},paint:{'text-color':'#e0e7ff','text-halo-color':'#000','text-halo-width':1.2}});
+    map2.addLayer({id:'sites2',type:'circle',source:'sites',filter:['in',['get','cat'],['literal',['Bus','Mall']]],paint:{'circle-radius':['interpolate',['linear'],['zoom'],10,3,16,8],'circle-color':['match',['get','cat'],'Bus',CAT.Bus.c,CAT.Mall.c],'circle-stroke-color':'#0b1016','circle-stroke-width':1.2}});
+    map2.addSource('cmin',{type:'geojson',data:CMIN});
+    const mtxt={'text-field':['concat',['to-string',['get','m']],' min'],'text-font':['Open Sans Semibold'],'text-allow-overlap':false,'text-padding':6};
+    const mpaint={'text-color':'#0b1016','text-halo-color':['interpolate',['linear'],['get','m'],0,'#22d3ee',5,'#a3e635',10,'#ffd166',15,'#f43f5e'],'text-halo-width':2.6};
+    map2.addLayer({id:'cmin5',type:'symbol',source:'cmin',minzoom:11.5,filter:['==',['get','m'],-1],layout:{...mtxt,'text-size':['interpolate',['linear'],['zoom'],12,10,16,13],'symbol-sort-key':0},paint:mpaint});
+    map2.addLayer({id:'cmin1',type:'symbol',source:'cmin',minzoom:14,filter:['==',['get','m'],-1],layout:{...mtxt,'text-size':10.5},paint:mpaint});
+    map2.addSource('rplan',{type:'geojson',data:{type:'FeatureCollection',features:[]}});
+    map2.addSource('umb2',{type:'geojson',data:D.umb});map2.addSource('stree2',{type:'geojson',data:STREE});
+    map2.addLayer({id:'stree2',type:'circle',source:'stree2',minzoom:14.5,paint:{'circle-radius':['interpolate',['exponential',2],['zoom'],14.5,1.6,17,7.36,22,235.6],'circle-color':'#22c55e','circle-opacity':0.35}});
+    map2.addLayer({id:'umb2',type:'circle',source:'umb2',minzoom:14,paint:{'circle-radius':['interpolate',['exponential',2],['zoom'],14,1.8,17,5.19,22,166.1],'circle-color':UMB,'circle-opacity':0.6,'circle-stroke-color':'#e0f7ff','circle-stroke-width':0.8}});
+    addPedIcons(map2);
+    map2.addLayer({id:'heads-fig',type:'symbol',source:'heads',minzoom:14.5,layout:{'icon-image':['match',['get','g'],0,'ped0','ped1'],'icon-size':['interpolate',['linear'],['zoom'],14.5,0.45,18,0.9],'icon-allow-overlap':true,'icon-anchor':'bottom'}});
+    map2.addLayer({id:'rplan',type:'circle',source:'rplan',paint:{'circle-radius':['interpolate',['exponential',2],['zoom'],12,['match',['get','k'],'u',3,1.4],17,['match',['get','k'],'u',6.5,4.2],22,['match',['get','k'],'u',166,134]],
+      'circle-color':['match',['get','k'],'u','#67e8f9','#22c55e'],'circle-opacity':['match',['get','k'],'u',0.9,0.55],'circle-stroke-color':['match',['get','k'],'u','#ffffff','#bbf7d0'],'circle-stroke-width':['match',['get','k'],'u',1.6,0.6]}});
+    map2.addLayer({id:'route-glow',type:'line',source:'route',paint:{'line-color':'#22d3ee','line-width':14,'line-opacity':0.25,'line-blur':6}});
+    map2.addLayer({id:'route-fast',type:'line',source:'route',filter:['==',['get','r'],0],layout:{'line-join':'round'},paint:{'line-color':'#cbd5e1','line-width':3,'line-dasharray':[2,1.5]}});
+    map2.addLayer({id:'route',type:'line',source:'route',filter:['==',['get','r'],1],layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':['match',['get','x'],1,'#f43f5e','#22c55e'],'line-width':6}});
+    map2.addLayer({id:'rmin',type:'circle',source:'rmin',paint:{'circle-radius':9,'circle-color':'#0b1016','circle-stroke-color':'#22c55e','circle-stroke-width':2}});
+    map2.addLayer({id:'rmin-t',type:'symbol',source:'rmin',layout:{'text-field':['get','l'],'text-font':['Open Sans Semibold'],'text-size':10,'text-allow-overlap':true},paint:{'text-color':'#fff'}});
+    addBoundary(map2);haramMarker(map2,'Masjid an‑Nabawi · main attractor');
+    m2Ready=true;setOrigin(origin);applyShow2();
+    map2.on('click',e=>{
+      if(routeMode){routeClick(e.lngLat);return}
+      if(coolMode){coolClick(e.lngLat);return}
+      const p=hexAt(e.lngLat.lng,e.lngLat.lat);
+      new maplibregl.Popup({maxWidth:'300px'}).setLngLat(e.lngLat).setHTML(`<div class="pp">${p?`<h5>Pedestrian movement: <span style="color:${PMI_COL[p.pc]}">${PMI_LBL[p.pc]}</span></h5><div class="s">PMI ${(+p.p).toFixed(2)} · cooling tier ${CPI_LBL[p.c]||'–'}</div>${bar('Walkability',p.w,'#7dd3fc')}${bar('Destinations',p.d,'#ffd166')}${bar('Built intensity',p.b,'#a3307e')}`:'<h5>This spot</h5>'}
+        ${timesHTML(walkTimes(e.lngLat))}<div style="margin-top:8px;display:flex;gap:6px"><button class="btn" onclick="exploreCool(${e.lngLat.lng},${e.lngLat.lat})">🚶 Walk to nearest shade ☂</button></div></div>`).addTo(map2)});
+    map2.flyTo({center:D.haram,zoom:13.2,pitch:55,bearing:-25,duration:3500});
+  })}
+(function(){
+  const cv=D.cover;
+  kpis($('k2'),[
+    {v:fmt(S.hot_km2,1),u:'km²',l:`Very‑high movement hotspots (${fmt(S.hot_n)} zones)`,k:'#ffd166'},
+    {v:fmt(S.corr_km),u:'km',l:'Major movement corridors (footpaths + busiest streets)',k:'#7dd3fc'},
+    {v:fmt(cv.haram['10'],1),u:'km²',l:'Reachable within a 10‑min walk of Masjid an‑Nabawi',k:'#22d3ee'},
+    {v:fmt(cv.bus['10'],1),u:'km²',l:'Within a 10‑min walk of a bus station / stop',k:'#38bdf8'}]);
+  $('orig').innerHTML=Object.entries(ORIG).map(([k,v])=>`<button data-k="${k}" class="${k===origin?'on':''}">${v.l}</button>`).join('');
+  $('orig').querySelectorAll('button').forEach(b=>b.onclick=()=>{$('orig').querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on');setOrigin(b.dataset.k);startPlay()});
+  distRows($('d2'),[5,4,3,2,1].map(k=>({l:PMI_LBL[k],c:PMI_COL[k],v:S.pmi_counts[k],t:fmt(S.pmi_counts[k]*S.hex_km2,1)+' km²'})),Math.max(...Object.values(S.pmi_counts)));
+  const T2=[['umb2','Proposed umbrellas + street trees (zoom in)'],['cmin','Walking‑minute labels on map'],['hex2','PMI hexagons (3D)'],['hot','Movement hotspots'],['corr','Animated corridors'],['trips','Pedestrians walking to the Haram'],['catch','Walking catchment network'],
+            ['pcnet','PedestrianCatch sidewalks + crossings'],['pc','PedestrianCatch 1–10 min hulls'],['pcp','PedestrianCatch timed points']];
+  $('t2').innerHTML=T2.map(([k,l])=>`<label class="tg"><input type="checkbox" data-k="${k}" ${show[k]?'checked':''}>${l}</label>`).join('');
+  $('t2').querySelectorAll('input').forEach(i=>i.onchange=()=>{show[i.dataset.k]=i.checked;applyShow2()});
+  const pc=D.pc;
+  $('pcbox').innerHTML=pc.found?`<div class="kpis" style="margin:0 0 6px"><div class="kpi" style="--k:#818cf8"><div class="v">${pc.median_abs_min}<small>min</small></div><div class="l">median difference · ${fmt(pc.compared)} points</div></div>
+    <div class="kpi" style="--k:#4ade80"><div class="v">${pc.within2}<small>%</small></div><div class="l">agree within ±2 min</div></div></div>
+    <ul class="pts" style="margin:0"><li>Same ${pc.starts} start points re‑run on our network</li><li>Two independent tools agree → model validated</li>${pc.net_n?`<li>${fmt(pc.cross_n)} PedestrianCatch crossings → crossing ☂ on Map 01</li>`:''}</ul>`:'No PedestrianCatch export found.';
+  $('m2').innerHTML=`<div class="formula">PMI = 35% Walkability + 45% Destinations + 20% Built</div>
+    <ul class="pts" style="margin:0"><li><b>Walk time</b>: Dijkstra on ${fmt(S.walk_km)} km footpaths + streets · ${SPEED_MS} m/s</li>
+    <li><b>Pedestrians</b>: ${fmt(D.trips.length)} real shortest paths to the Haram</li><li><b>Corridor width</b> = flow</li></ul>
+    <div class="note"><b>Modelled</b>, not counted. Calibrate with Haram gate counts / phone data.</div>`;
+})();
+function catchColor(k){const v=['coalesce',['get',k],99];return['interpolate',['linear'],v,0,'#22d3ee',5,'#a3e635',10,'#ffd166',15,'#f43f5e']}
+function minFilter(q){if(!m2Ready)return;const b=['all',['==',['get','k'],origin],['<=',['get','m'],q]];map2.setFilter('cmin5',[...b,['==',['%',['get','m'],5],0]]);map2.setFilter('cmin1',[...b,['!=',['%',['get','m'],5],0]])}
+function setOrigin(k){origin=k;lastTq=-1;if(m2Ready){map2.setFilter('catch',['<=',['coalesce',['get',k],99],Math.ceil(T)]);map2.setPaintProperty('catch','line-color',catchColor(k));minFilter(Math.ceil(T))}
+  const c=D.cover[ORIG[k].k];distRows($('cov'),[['5','#a3e635'],['10','#ffd166'],['15','#f43f5e']].map(([m,col])=>({l:`≤ ${m} min`,c:col,v:c[m],t:fmt(c[m],1)+' km²'})),Math.max(c['15'],1))}
+let lastTq=-1;
+function setT(t){T=t;$('tslider').value=t;$('tval').textContent=(t>=15?'15':t.toFixed(1))+' min';
+  const q=Math.min(15,Math.ceil(t));if(m2Ready&&q!==lastTq){lastTq=q;map2.setFilter('catch',['<=',['coalesce',['get',origin],99],q]);minFilter(q)}}
+$('tslider').oninput=e=>{playing=false;$('bplay').textContent='▶ Play';setT(+e.target.value)};
+let playT0=0;function startPlay(){playing=true;playT0=performance.now();$('bplay').textContent='❚❚ Pause'}
+$('bplay').onclick=()=>{if(playing){playing=false;$('bplay').textContent='▶ Play'}else startPlay()};
+function applyShow2(){if(!m2Ready)return;const vis=(l,on)=>map2.setLayoutProperty(l,'visibility',on?'visible':'none');
+  vis('hex2',show.hex2&&!is3D2);vis('hex2-3d',show.hex2&&is3D2);vis('hot',show.hot);vis('corr-base',show.corr);vis('corr-flow',show.corr);
+  vis('trips',show.trips);vis('heads',show.trips);vis('heads-fig',show.trips);vis('catch',show.catch);vis('pch',show.pc);vis('pcp',show.pcp);vis('pcp-t',show.pcp);vis('pcnet',show.pcnet);vis('cmin5',show.cmin);vis('cmin1',show.cmin);vis('umb2',show.umb2);vis('stree2',show.umb2)}
+$('lg2').innerHTML=`<h4>Pedestrian Movement Index</h4>${[5,4,3,2].map(k=>`<div class="lg"><span class="sw" style="background:${PMI_COL[k]}"></span>${PMI_LBL[k]}</div>`).join('')}
+  <div class="lg"><span class="sw" style="border:1.5px dashed #ffd166"></span>Movement hotspot</div><div class="sep"></div>
+  <div class="lg"><span class="sw l" style="background:#fff"></span>Busy street corridor (width = flow)</div><div class="lg"><span class="sw l" style="background:#7dd3fc"></span>Footpath / pedestrian corridor</div>
+  <div class="lg"><span class="sw c" style="background:#fff7d6;box-shadow:0 0 6px #ffd166"></span>Pedestrian walking to the Haram</div>
+  <div class="sep"></div><div style="font-size:11.5px;color:#d5dde8">Walk time from origin</div><div class="ramp" style="background:linear-gradient(90deg,#22d3ee,#a3e635 33%,#ffd166 66%,#f43f5e)"></div><div class="rampl"><span>0</span><span>5</span><span>10</span><span>15 min</span></div>
+  <div class="sep"></div><div class="lg"><span class="sw l" style="background:#cbd5e1"></span>A→B fastest route</div><div class="lg"><span class="sw l" style="background:#22c55e"></span>A→B cool route</div><div class="lg"><span class="sw l" style="background:#f43f5e"></span>Cool route through hot zone</div><div class="lg"><span class="sw c" style="background:#0e7490;border:1px solid #fff"></span>☂ Shade stop on route</div><div class="lg"><span class="sw c" style="background:${UMB}"></span>Proposed umbrella</div><div class="lg"><span class="sw c" style="background:#22c55e"></span>Proposed street tree</div>
+  <div class="lg"><span class="sw c" style="background:${CAT.Bus.c}"></span>Bus station / stop</div><div class="lg"><span class="sw c" style="background:${CAT.Mall.c}"></span>Shopping mall</div>`;
+
+function addPedIcons(m){[0,1].forEach(g=>{const W=40,H=60,c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');
+  x.strokeStyle='#fff7d6';x.fillStyle='#fff7d6';x.lineCap='round';x.shadowColor='#ffd166';x.shadowBlur=8;
+  x.beginPath();x.arc(20,9,6,0,7);x.fill();x.lineWidth=5;x.beginPath();x.moveTo(20,17);x.lineTo(20,35);x.stroke();
+  const L=g?[[12,56],[28,56]]:[[17,57],[23,57]],A=g?[[11,32],[29,30]]:[[15,34],[25,34]];
+  x.lineWidth=4.5;L.forEach(([a,b])=>{x.beginPath();x.moveTo(20,35);x.lineTo(a,b);x.stroke()});
+  x.lineWidth=3.8;A.forEach(([a,b])=>{x.beginPath();x.moveTo(20,19);x.lineTo(a,b);x.stroke()});
+  m.addImage('ped'+g,{width:W,height:H,data:x.getImageData(0,0,W,H).data},{pixelRatio:2})})}
+function exploreCool(lng,lat){document.querySelectorAll('.maplibregl-popup').forEach(p=>p.remove());coolClick({lng,lat})}
+// ---------- zoom-aware animation speed (gradual, same feel at every zoom) ----------
+let zfS=1,wfS=1;
+function zoomFactors(){const z=map2?map2.getZoom():13,zf=Math.max(0.1,Math.min(1.6,Math.pow(2,-(z-13)*0.9))),wf=Math.max(0.5,Math.min(1.6,Math.pow(2,-(z-15.5)*0.8)));
+  zfS+=(zf-zfS)*0.06;wfS+=(wf-wfS)*0.06;return[zfS,wfS]}
+// ---------- routing graph (decoded once on demand) ----------
+let GR=null;
+function buildGraph(){if(GR)return GR;const g=D.graph,o=g.o,n=g.n.length/2,lon=new Float64Array(n),lat=new Float64Array(n);
+  for(let i=0;i<n;i++){lon[i]=o[0]+g.n[2*i]/1e5;lat[i]=o[1]+g.n[2*i+1]/1e5}
+  const deg=new Int32Array(n+1),E=g.e;for(let i=0;i<E.length;i+=2){deg[E[i]+1]++;deg[E[i+1]+1]++}for(let i=0;i<n;i++)deg[i+1]+=deg[i];
+  const adj=new Int32Array(E.length),w=new Float32Array(E.length),hf=new Float32Array(E.length),ehw=new Float32Array(E.length),pos=deg.slice(0,n),kx=101200,ky=110900;
+  for(let i=0;i<E.length;i+=2){const a=E[i],b=E[i+1],L=Math.hypot((lon[a]-lon[b])*kx,(lat[a]-lat[b])*ky),h=g.h[i>>1]/100;
+    const hw=g.w?g.w[i>>1]:3;ehw[pos[a]]=hw;ehw[pos[b]]=hw;hf[pos[a]]=h;adj[pos[a]]=b;w[pos[a]++]=L;hf[pos[b]]=h;adj[pos[b]]=a;w[pos[b]++]=L}
+  const grid=new Map(),C=0.002;for(let i=0;i<n;i++){const k=Math.floor(lon[i]/C)+','+Math.floor(lat[i]/C);(grid.get(k)||grid.set(k,[]).get(k)).push(i)}
+  return GR={n,lon,lat,deg,adj,w,hf,ehw,grid,C}}
+function snapNode(ll){const g=buildGraph();let best=-1,bd=1e9;const cx=Math.floor(ll.lng/g.C),cy=Math.floor(ll.lat/g.C);
+  for(let a=-2;a<=2;a++)for(let b=-2;b<=2;b++)(g.grid.get((cx+a)+','+(cy+b))||[]).forEach(i=>{const d=((g.lon[i]-ll.lng)*101200)**2+((g.lat[i]-ll.lat)*110900)**2;if(d<bd){bd=d;best=i}});return best}
+let HF=null; // per-edge heat factor for the cool route
+function heatFactor(){buildGraph();if(GR.hfS)return GR.hfS;const g=GR,h=Float32Array.from(g.hf);
+  for(let v=0;v<g.n;v++)for(let j=g.deg[v];j<g.deg[v+1];j++){const u=g.adj[j];if(shadeNear((g.lon[v]+g.lon[u])/2,(g.lat[v]+g.lat[u])/2,20))h[j]*=0.5}
+  return GR.hfS=h}
+function shortest(s,t,cool){const g=buildGraph(),hf=cool?heatFactor():null,dist=new Float64Array(g.n).fill(Infinity),prev=new Int32Array(g.n).fill(-1);
+  const H=[],push=(d,v)=>{H.push([d,v]);let i=H.length-1;while(i>0){const p=(i-1)>>1;if(H[p][0]<=H[i][0])break;[H[p],H[i]]=[H[i],H[p]];i=p}},
+  pop=()=>{const top=H[0],last=H.pop();if(H.length){H[0]=last;let i=0;for(;;){let l=2*i+1,r=l+1,m=i;if(l<H.length&&H[l][0]<H[m][0])m=l;if(r<H.length&&H[r][0]<H[m][0])m=r;if(m===i)break;[H[m],H[i]]=[H[i],H[m]];i=m}}return top};
+  dist[s]=0;push(0,s);while(H.length){const[d,v]=pop();if(v===t)break;if(d>dist[v])continue;for(let j=g.deg[v];j<g.deg[v+1];j++){const u=g.adj[j],nd=d+g.w[j]*(hf?hf[j]:1);if(nd<dist[u]){dist[u]=nd;prev[u]=v;push(nd,u)}}}
+  if(!isFinite(dist[t]))return null;const path=[];for(let v=t;v!==-1;v=prev[v])path.push(v);path.reverse();
+  let len=0;for(let i=1;i<path.length;i++)len+=Math.hypot((g.lon[path[i]]-g.lon[path[i-1]])*101200,(g.lat[path[i]]-g.lat[path[i-1]])*110900);return{path,len}}
+// ---- proposed shade (umbrellas + trees) used by the walk model ----
+let SH=null;
+function shadeIndex(){if(SH)return SH;const pts=[];D.umb.features.forEach(f=>pts.push({c:f.geometry.coordinates,k:'umb'}));D.trees_p.features.forEach(f=>pts.push({c:f.geometry.coordinates,k:'tree'}));
+  STREE.features.forEach(f=>pts.push({c:f.geometry.coordinates,k:'tree'}));
+  const C=0.0005,grid=new Map();pts.forEach((p,i)=>{const key=Math.floor(p.c[0]/C)+','+Math.floor(p.c[1]/C);(grid.get(key)||grid.set(key,[]).get(key)).push(i)});return SH={pts,grid,C}}
+function shadeNear(lon,lat,r,onlyUmb){const s=shadeIndex(),cx=Math.floor(lon/s.C),cy=Math.floor(lat/s.C);let best=-1,bd=r;
+  for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++)(s.grid.get((cx+a)+','+(cy+b))||[]).forEach(i=>{if(onlyUmb&&s.pts[i].k!=='umb')return;const p=s.pts[i].c,d=Math.hypot((p[0]-lon)*101200,(p[1]-lat)*110900);if(d<bd){bd=d;best=i}});return best<0?null:{i:best,d:bd,p:s.pts[best]}}
+// shade stops along a path (proposed umbrella / tree within 20 m) + longest stretch in the sun
+function shadeStops(co){const st=[];let acc=0,lastD=-1e9;const used=new Set(),shaded=[];
+  for(let i=1;i<co.length;i++){const L=Math.hypot((co[i][0]-co[i-1][0])*101200,(co[i][1]-co[i-1][1])*110900),n=Math.max(1,Math.ceil(L/10));
+    for(let k=1;k<=n;k++){const f=k/n,x=co[i-1][0]+(co[i][0]-co[i-1][0])*f,y=co[i-1][1]+(co[i][1]-co[i-1][1])*f,d=acc+L*f,h=shadeNear(x,y,20);
+      if(h)shaded.push(d);
+      const u=shadeNear(x,y,20,true);
+      if(u&&!used.has(u.i)&&d-lastD>=60&&d>15){used.add(u.i);lastD=d;st.push({c:u.p.c,k:'umb',t:d/SPEED_MS/60,d})}}
+    acc+=L}
+  const ds=[0,...shaded,acc];let gap=0;for(let i=1;i<ds.length;i++)gap=Math.max(gap,ds[i]-ds[i-1]);
+  return{stops:st,sun:gap/SPEED_MS/60}}
+function analyse(r,cool){const g=buildGraph(),co=r.path.map(i=>[g.lon[i],g.lat[i]]),tm=r.len/SPEED_MS/60,stepM=tm<=15?1:tm<=30?2:5;let acc=0,next=60*SPEED_MS*stepM,mins=[],hot=0,feats=[],seg=[co[0]],segHot=null,cum=[0];
+  for(let i=1;i<co.length;i++){const L=Math.hypot((co[i][0]-co[i-1][0])*101200,(co[i][1]-co[i-1][1])*110900);
+    const hp=hexAt((co[i][0]+co[i-1][0])/2,(co[i][1]+co[i-1][1])/2),isHot=hp&&hp.c>=4?1:0;if(isHot)hot+=L;
+    if(segHot!==null&&isHot!==segHot){feats.push({type:'Feature',properties:{x:segHot,r:cool?1:0},geometry:{type:'LineString',coordinates:seg}});seg=[co[i-1]]}
+    seg.push(co[i]);segHot=isHot;
+    while(acc+L>=next){const f=(next-acc)/L;mins.push({type:'Feature',properties:{l:String(Math.round(next/60/SPEED_MS))+'′',r:cool?1:0},geometry:{type:'Point',coordinates:[co[i-1][0]+(co[i][0]-co[i-1][0])*f,co[i-1][1]+(co[i][1]-co[i-1][1])*f]}});next+=60*SPEED_MS*stepM}
+    acc+=L;cum.push(acc)}
+  feats.push({type:'Feature',properties:{x:segHot||0,r:cool?1:0},geometry:{type:'LineString',coordinates:seg}});
+  const sh=shadeStops(co);
+  return{feats,mins,hot,len:r.len,stops:sh.stops,sun:sh.sun}}
+let routeMode=false,rA=null,mk=[],coolMode=false,walker=null,walkRAF=0,routeActive=false;
+function setRouteActive(on){routeActive=on;if(!m2Ready)return;map2.setPaintProperty('catch','line-opacity',on?0.18:0.9);map2.setPaintProperty('corr-flow','line-opacity',on?0.3:0.9);const v=on?'none':(show.trips?'visible':'none');['trips','heads','heads-fig'].forEach(l=>map2.setLayoutProperty(l,'visibility',v));['cmin5','cmin1'].forEach(l=>map2.setLayoutProperty(l,'visibility',!on&&show.cmin?'visible':'none'))}
+// ---- walking person animation (1 s on screen = 30 s walked) ----
+function animateWalker(co,stops,label){
+  if(walker){walker.remove();cancelAnimationFrame(walkRAF)}
+  const el=document.createElement('div');el.className='wk';el.innerHTML='<div class="wtag">0.0 min</div><svg class="walker" viewBox="0 0 30 44"><g class="fig"><line class="arm a1" x1="15" y1="13" x2="15" y2="24"/><line class="leg l1" x1="15" y1="25" x2="15" y2="41"/><line x1="15" y1="11" x2="15" y2="25"/><line class="leg l2" x1="15" y1="25" x2="15" y2="41"/><line class="arm a2" x1="15" y1="13" x2="15" y2="24"/><circle cx="15" cy="6" r="4.6"/></g></svg>';
+  const tag=el.firstChild,fig=el.lastChild;walker=new maplibregl.Marker({element:el,anchor:'bottom'}).setLngLat(co[0]).addTo(map2);
+  const cum=[0];for(let i=1;i<co.length;i++)cum.push(cum[i-1]+Math.hypot((co[i][0]-co[i-1][0])*101200,(co[i][1]-co[i-1][1])*110900));
+  const total=cum[cum.length-1];stops=(stops||[]).filter(s=>s.d>5&&s.d<total-5);const stopD=stops.map(s=>s.d);
+  let walked=0,last=performance.now(),rest=0,si=0;
+  function step(now){const dt=Math.min(0.1,(now-last)/1000);last=now;
+    const wf=zoomFactors()[1];fig.style.setProperty('--sw',(0.62/Math.max(0.5,Math.min(1.3,wf))).toFixed(2)+'s');
+    if(rest>0){rest-=dt;if(rest<=0)fig.classList.remove('rest');walkRAF=requestAnimationFrame(step);return}
+    walked=Math.min(total,walked+dt*30*SPEED_MS*wf);
+    if(si<stopD.length&&walked>=stopD[si]){walked=stopD[si];rest=0.9;fig.classList.add('rest');tag.textContent='☂ shade stop · '+fmt(walked/SPEED_MS/60,1)+' min';si++}
+    else tag.textContent=fmt(walked/SPEED_MS/60,1)+' min · '+fmt(walked)+' m';
+    let i=1;while(i<cum.length-1&&cum[i]<walked)i++;const f=(walked-cum[i-1])/Math.max(1e-6,cum[i]-cum[i-1]);
+    walker.setLngLat([co[i-1][0]+(co[i][0]-co[i-1][0])*f,co[i-1][1]+(co[i][1]-co[i-1][1])*f]);
+    fig.style.scale=co[i][0]<co[i-1][0]?'1 1':'-1 1';
+    if(walked<total)walkRAF=requestAnimationFrame(step);
+    else{fig.classList.add('rest');tag.textContent=(label||'Arrived')+' · '+fmt(total/SPEED_MS/60,1)+' min'}}
+  walkRAF=requestAnimationFrame(step)}
+// ---- nearest cool spot = nearest proposed umbrella / park (heat-aware network) ----
+let COOLT=null;
+function coolTargets(){if(COOLT)return COOLT;const g=buildGraph();COOLT=new Map();
+  D.umb.features.forEach(f=>{const c=f.geometry.coordinates,n=snapNode({lng:c[0],lat:c[1]});if(n<0)return;const d=Math.hypot((g.lon[n]-c[0])*101200,(g.lat[n]-c[1])*110900);
+    if(d<30&&!COOLT.has(n))COOLT.set(n,{k:'umb',c,name:f.properties.n})});
+  D.sites.features.forEach(f=>{if(f.properties.cat!=='Park')return;const n=snapNode({lng:f.geometry.coordinates[0],lat:f.geometry.coordinates[1]});
+    const d=Math.hypot((g.lon[n]-f.geometry.coordinates[0])*101200,(g.lat[n]-f.geometry.coordinates[1])*110900);if(d<120&&!COOLT.has(n))COOLT.set(n,{k:'park',c:f.geometry.coordinates,name:f.properties.name})});return COOLT}
+const SK={umb:{i:'☂',l:'proposed umbrella (100 m²)',c:'#0e7490'},tree:{i:'🌳',l:'proposed shade tree',c:'#15803d'},park:{i:'🌳',l:'park',c:'#15803d'}};
+function nearestCool(s){const g=buildGraph(),hf=heatFactor(),T=coolTargets(),dist=new Float64Array(g.n).fill(Infinity),prev=new Int32Array(g.n).fill(-1),H=[];
+  const push=(d,v)=>{H.push([d,v]);let i=H.length-1;while(i>0){const p=(i-1)>>1;if(H[p][0]<=H[i][0])break;[H[p],H[i]]=[H[i],H[p]];i=p}},
+  pop=()=>{const top=H[0],last=H.pop();if(H.length){H[0]=last;let i=0;for(;;){let l=2*i+1,r=l+1,m=i;if(l<H.length&&H[l][0]<H[m][0])m=l;if(r<H.length&&H[r][0]<H[m][0])m=r;if(m===i)break;[H[m],H[i]]=[H[i],H[m]];i=m}}return top};
+  dist[s]=0;push(0,s);let hit=-1;while(H.length){const[d,v]=pop();if(d>dist[v])continue;if(T.has(v)){hit=v;break}for(let j=g.deg[v];j<g.deg[v+1];j++){const u=g.adj[j],nd=d+g.w[j]*hf[j];if(nd<dist[u]){dist[u]=nd;prev[u]=v;push(nd,u)}}}
+  if(hit<0)return null;const path=[];for(let v=hit;v!==-1;v=prev[v])path.push(v);path.reverse();
+  let len=0;for(let i=1;i<path.length;i++)len+=Math.hypot((g.lon[path[i]]-g.lon[path[i-1]])*101200,(g.lat[path[i]]-g.lat[path[i-1]])*110900);return{path,len,site:T.get(hit)}}
+$('bcool').onclick=()=>{coolMode=true;routeMode=false;$('bcool').classList.add('on');map2&&(map2.getCanvas().style.cursor='crosshair');toast('Click anywhere: the walker heads to the nearest shade ☂')};
+function coolClick(ll){coolMode=false;setRouteActive(true);$('bcool').classList.remove('on');map2.getCanvas().style.cursor='';
+  mk.forEach(m=>m.remove());mk=[pin(ll,'A','#22d3ee')];map2.getSource('rplan').setData({type:'FeatureCollection',features:[]});const g=buildGraph(),r=nearestCool(snapNode(ll));
+  if(!r){$('rinfo').innerHTML='No cool spot reachable from here.';return}
+  const C=analyse(r,true),co=r.path.map(i=>[g.lon[i],g.lat[i]]);co.push(r.site.c);const end=r.site.c;
+  map2.getSource('route').setData({type:'FeatureCollection',features:C.feats});map2.getSource('rmin').setData({type:'FeatureCollection',features:C.mins});
+  const el=document.createElement('div');el.className='pin';el.style.cssText='background:#0f766e;width:30px;height:30px;font-size:15px';el.textContent=SK[r.site.k].i;el.style.background=SK[r.site.k].c;mk.push(new maplibregl.Marker({element:el}).setLngLat(end).addTo(map2));
+  $('rinfo').innerHTML=`<div class="route"><div><b>${fmt(r.len/SPEED_MS/60,1)}′</b><span>to nearest shade</span></div><div><b>${fmt(r.len)} m</b><span>network distance</span></div><div><b style="color:#f43f5e">${fmt(100*C.hot/Math.max(1,r.len))}%</b><span>through hot zones</span></div></div>
+    <ul class="pts" style="margin:8px 0 0"><li>Nearest shade: <b>${SK[r.site.k].i} ${SK[r.site.k].l}</b>${r.site.name?' · <span dir="auto">'+esc(r.site.name)+'</span>':''}</li><li>The walker waits under it, out of the sun</li><li>Route prefers cooler streets lined with proposed trees</li></ul>`;
+  map2.fitBounds(co.reduce((a,c)=>[Math.min(a[0],c[0]),Math.min(a[1],c[1]),Math.max(a[2],c[0]),Math.max(a[3],c[1])],[180,90,-180,-90]),{padding:{top:120,bottom:120,left:120,right:300},maxZoom:17.5,pitch:45,duration:1400});
+  map2.once('moveend',()=>animateWalker(co,[],SK[r.site.k].i+' In the shade'))}
+// shade plan for any custom route: new umbrella wherever >=100 m without shade, trees both sides every 15 m on sun-exposed parts
+let RPLAN=null,rpOpt='both',BLD=null;
+function bldIndex(){if(BLD)return BLD;const o=D.graph.o,C=0.001,grid=new Map(),RR=D.bld.map(a=>{const r=[];for(let i=0;i<a.length;i+=2)r.push([o[0]+a[i]/1e5,o[1]+a[i+1]/1e5]);return r});
+  RR.forEach((r,i)=>{let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;r.forEach(([x,y])=>{x0=Math.min(x0,x);x1=Math.max(x1,x);y0=Math.min(y0,y);y1=Math.max(y1,y)});
+    for(let a=Math.floor(x0/C);a<=Math.floor(x1/C);a++)for(let b=Math.floor(y0/C);b<=Math.floor(y1/C);b++){const k=a+','+b;(grid.get(k)||grid.set(k,[]).get(k)).push(i)}});return BLD={R:RR,grid,C}}
+function inBld(x,y){const B=bldIndex(),l=B.grid.get(Math.floor(x/B.C)+','+Math.floor(y/B.C));if(!l)return false;
+  for(const i of l){const r=B.R[i];let c=false;for(let a=0,b=r.length-1;a<r.length;b=a++){if(((r[a][1]>y)!==(r[b][1]>y))&&(x<(r[b][0]-r[a][0])*(y-r[a][1])/(r[b][1]-r[a][1])+r[a][0]))c=!c}if(c)return true}return false}
+function edgeHW(a,b){const g=buildGraph();for(let j=g.deg[a];j<g.deg[a+1];j++)if(g.adj[j]===b)return g.ehw[j];return 3}
+// tree every 10 m on both kerbs (road half-width + 2.5 m), never on a building, carriageway or junction corner;
+// umbrella wherever the walker would be >= 100 m (~1.5 min) without any shade
+function routePlan(path){const g=buildGraph(),U=[],T=[];let acc=0,since=0,lastT=-1e9,have=0;
+  for(let i=1;i<path.length;i++){const A=path[i-1],B=path[i],x0=g.lon[A],y0=g.lat[A],x1=g.lon[B],y1=g.lat[B],dxm=(x1-x0)*101200,dym=(y1-y0)*110900,L=Math.hypot(dxm,dym);
+    if(L<0.01)continue;const off=edgeHW(A,B)+2.5,px=-dym/L,py=dxm/L,n=Math.max(1,Math.ceil(L/5)),jA=g.deg[A+1]-g.deg[A]>=3,jB=g.deg[B+1]-g.deg[B]>=3;
+    for(let k=1;k<=n;k++){const f=k/n,x=x0+(x1-x0)*f,y=y0+(y1-y0)*f,d=acc+L*f;
+      if(shadeNear(x,y,20))since=0;else{since+=L/n;if(since>=100){for(const sg of[1,-1]){const c=[x+sg*px*off/101200,y+sg*py*off/110900];if(!inBld(c[0],c[1])){U.push({c,d});since=0;break}}}}
+      if(d-lastT>=10&&!(jA&&L*f<10)&&!(jB&&L*(1-f)<10)){lastT=d;for(const sg of[1,-1]){const c=[x+sg*px*off/101200,y+sg*py*off/110900];if(inBld(c[0],c[1]))continue;if(shadeNear(c[0],c[1],6))have++;else T.push(c)}}}
+    acc+=L}
+  return{U,T,have}}
+function showRoutePlan(){if(!m2Ready||!RPLAN)return;const f=[];if(rpOpt!=='t')RPLAN.U.forEach(u=>f.push({type:'Feature',properties:{k:'u'},geometry:{type:'Point',coordinates:u.c}}));
+  if(rpOpt!=='u')RPLAN.T.forEach(c=>f.push({type:'Feature',properties:{k:'t'},geometry:{type:'Point',coordinates:c}}));map2.getSource('rplan').setData({type:'FeatureCollection',features:f});
+  document.querySelectorAll('#rpopt button').forEach(b=>b.classList.toggle('on',b.dataset.o===rpOpt))}
+function setRP(o){rpOpt=o;showRoutePlan()}
+// places passed on the way (mosque, school, bus, mall, park within 70 m of the route)
+const PI={Mosque:'🕌',School:'🏫',Bus:'🚌',Mall:'🛍',Park:'🌳'};
+function placesAlong(co){const cum=[0];for(let i=1;i<co.length;i++)cum.push(cum[i-1]+Math.hypot((co[i][0]-co[i-1][0])*101200,(co[i][1]-co[i-1][1])*110900));
+  let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;co.forEach(([x,y])=>{x0=Math.min(x0,x);x1=Math.max(x1,x);y0=Math.min(y0,y);y1=Math.max(y1,y)});const pad=0.001,out=[];
+  D.sites.features.forEach(f=>{const [sx,sy]=f.geometry.coordinates;if(sx<x0-pad||sx>x1+pad||sy<y0-pad||sy>y1+pad)return;let bd=1e9,bi=0;
+    for(let i=0;i<co.length;i++){const d=Math.hypot((co[i][0]-sx)*101200,(co[i][1]-sy)*110900);if(d<bd){bd=d;bi=i}}
+    if(bd<=(f.properties.cat==='Park'?90:70))out.push({c:[sx,sy],cat:f.properties.cat,n:f.properties.name,t:cum[bi]/SPEED_MS/60})});
+  return out.sort((a,b)=>a.t-b.t)}
+function pin(ll,l,c){const el=document.createElement('div');el.className='pin';el.style.background=c;el.textContent=l;return new maplibregl.Marker({element:el}).setLngLat(ll).addTo(map2)}
+$('broute').onclick=()=>{routeMode=true;rA=null;$('broute').classList.add('on');map2&&(map2.getCanvas().style.cursor='crosshair');toast('Click the START point (A)')};
+$('brclr').onclick=()=>{mk.forEach(m=>m.remove());mk=[];if(walker){walker.remove();walker=null;cancelAnimationFrame(walkRAF)}coolMode=false;$('bcool').classList.remove('on');setRouteActive(false);rA=null;routeMode=false;$('broute').classList.remove('on');if(m2Ready){map2.getSource('route').setData({type:'FeatureCollection',features:[]});map2.getSource('rmin').setData({type:'FeatureCollection',features:[]});map2.getSource('rplan').setData({type:'FeatureCollection',features:[]});RPLAN=null;map2.getCanvas().style.cursor=''}};
+function routeClick(ll){
+  if(!rA){mk.forEach(m=>m.remove());mk=[pin(ll,'A','#22d3ee')];rA=ll;toast('Now click the END point (B)');return}
+  mk.push(pin(ll,'B','#f43f5e'));routeMode=false;setRouteActive(true);$('broute').classList.remove('on');map2.getCanvas().style.cursor='';
+  const g=buildGraph(),s=snapNode(rA),t=snapNode(ll);rA=null;
+  const rf=shortest(s,t,false),rc=shortest(s,t,true);
+  if(!rf){$('rinfo').innerHTML='No connected walking route found between these points.';return}
+  const F=analyse(rf,false),C=analyse(rc,true);
+  map2.getSource('route').setData({type:'FeatureCollection',features:[...F.feats,...C.feats]});
+  map2.getSource('rmin').setData({type:'FeatureCollection',features:C.mins});
+  C.stops.forEach(s=>{const el=document.createElement('div');el.className='pin';el.style.cssText='background:#0e7490;width:22px;height:22px;font-size:12px;border-width:1.5px';el.textContent='☂';el.title=`Shade stop · ${fmt(s.t,1)} min`;mk.push(new maplibregl.Marker({element:el}).setLngLat(s.c).addTo(map2))});
+  const mn=x=>x/SPEED_MS/60,cco=rc.path.map(i=>[g.lon[i],g.lat[i]]);RPLAN=routePlan(rc.path);rpOpt='both';
+  const allStops=[...C.stops,...RPLAN.U.map(u=>({c:u.c,k:'umb',d:u.d,t:u.d/SPEED_MS/60,nw:1}))].sort((a,b)=>a.d-b.d);
+  $('rinfo').innerHTML=`<table class="plan"><tr><th></th><th>Time</th><th>Distance</th><th>In hot zone</th></tr>
+    <tr><td><span class="sw l" style="display:inline-block;width:14px;background:#94a3b8;vertical-align:middle"></span> Fastest</td><td>${fmt(mn(F.len),1)}′</td><td>${fmt(F.len)} m</td><td style="color:#f43f5e">${fmt(100*F.hot/Math.max(1,F.len))}%</td></tr>
+    <tr><td><span class="sw l" style="display:inline-block;width:14px;background:#22c55e;vertical-align:middle"></span> <b>Cool route</b></td><td>${fmt(mn(C.len),1)}′</td><td>${fmt(C.len)} m</td><td style="color:#22c55e"><b>${fmt(100*C.hot/Math.max(1,C.len))}%</b></td></tr></table>
+    <div class="route"><div><b style="color:#67e8f9">${C.stops.length}</b><span>☂ shade stops on cool route</span></div><div><b style="color:#f43f5e">${fmt(F.sun,1)}′</b><span>longest walk in sun · fastest</span></div><div><b style="color:#22c55e">${fmt(C.sun,1)}′</b><span>longest walk in sun · cool</span></div></div>
+    <div style="margin-top:8px">Cool route: ${fmt(Math.max(0,F.hot-C.hot))} m less hot‑zone walking for <b>+${fmt(mn(C.len-F.len),1)} min</b>.</div>
+    <div class="card" style="margin-top:10px;background:#0f1a24"><b>🛠 Shade plan for this route</b>
+      <div class="big2" style="margin:8px 0"><div style="background:linear-gradient(135deg,#0e3a4a,#103040);padding:8px"><b style="font-size:22px">${fmt(RPLAN.U.length)}</b><span>new ☂ umbrellas<br>+ ${C.stops.length} already planned</span></div>
+      <div style="background:linear-gradient(135deg,#123d24,#0f2e1d);padding:8px"><b style="font-size:22px">${fmt(RPLAN.T.length)}</b><span>new 🌳 trees · every 10 m<br>both kerbs (+ ${fmt(RPLAN.have)} already planned)</span></div></div>
+      <div class="subtabs" id="rpopt" style="margin:0"><button data-o="u" onclick="setRP('u')">☂ Umbrellas</button><button data-o="t" onclick="setRP('t')">🌳 Trees</button><button data-o="both" class="on" onclick="setRP('both')">Both</button></div>
+      <div class="s" style="font-size:11.5px;color:var(--mut);margin-top:6px">Trees on the kerb‑side strip (road half‑width + 2.5 m), not on the road, a building or a junction corner. With the ☂ the longest walk in the sun drops to ≤ ${fmt(100/SPEED_MS/60,1)} min.</div></div>
+    <div class="note">☂ shade stop = a proposed umbrella from Map 01 within 20 m of the route; the walker pauses under each. "Longest walk in sun" = longest stretch with no proposed umbrella / tree nearby.</div>`;
+  const co=[...rf.path,...rc.path].map(i=>[g.lon[i],g.lat[i]]);
+  const b=co.reduce((a,c)=>[Math.min(a[0],c[0]),Math.min(a[1],c[1]),Math.max(a[2],c[0]),Math.max(a[3],c[1])],[180,90,-180,-90]);
+  map2.fitBounds(b,{padding:{top:100,bottom:100,left:100,right:300},maxZoom:17.5,pitch:40,duration:1500});
+  showRoutePlan();
+  const PL=placesAlong(cco);
+  PL.slice(0,60).forEach(q=>{const el=document.createElement('div');el.className='pin';el.style.cssText=`background:${CAT[q.cat].c};width:24px;height:24px;font-size:13px;border-width:1.5px`;el.textContent=PI[q.cat];el.title=`${q.n||CAT[q.cat].l} · ${fmt(q.t,1)} min`;
+    el.onclick=ev=>{ev.stopPropagation();new maplibregl.Popup({offset:14}).setLngLat(q.c).setHTML(`<div class="pp"><h5 dir="auto">${PI[q.cat]} ${esc(q.n||'Unnamed '+q.cat.toLowerCase())}</h5><div class="s">${CAT[q.cat].l} · passed at <b>${fmt(q.t,1)} min</b></div></div>`).addTo(map2)};
+    mk.push(new maplibregl.Marker({element:el}).setLngLat(q.c).addTo(map2))});
+  if(PL.length){const cnt={};PL.forEach(q=>cnt[q.cat]=(cnt[q.cat]||0)+1);
+    $('rinfo').insertAdjacentHTML('beforeend',`<div style="margin-top:10px"><b>📍 Along the way</b> <span style="color:var(--mut);font-size:11.5px">${Object.entries(cnt).map(([k,v])=>PI[k]+' '+v).join(' · ')}</span>
+      <div class="list" style="max-height:220px;margin-top:6px">${PL.map(q=>`<div class="item" style="grid-template-columns:44px 22px 1fr" onclick="map2.flyTo({center:[${q.c[0]},${q.c[1]}],zoom:17.5})"><b>${fmt(q.t,1)}′</b><span>${PI[q.cat]}</span><span class="nm ${isAr(q.n)?'ar':''}" dir="auto">${esc(q.n||'Unnamed '+CAT[q.cat].l.toLowerCase())}</span></div>`).join('')}</div></div>`)}
+  map2.once('moveend',()=>animateWalker(cco,allStops,'Arrived at B'));
+}
+
+// ---------- trips animation ----------
+const TR=D.trips.map((t,i)=>({p:t.p,t:t.t,dur:t.t[t.t.length-1],off:(i*137.5)%900}));
+const SPEED=60,TRAIL=50;
+function posAt(tr,s){const t=tr.t;if(s<=0)return 0;if(s>=tr.dur)return t.length-1;let lo=0,hi=t.length-1;while(hi-lo>1){const m=(lo+hi)>>1;t[m]<=s?lo=m:hi=m}return lo+(s-t[lo])/Math.max(1e-6,t[hi]-t[lo])}
+function interp(tr,f){const i=Math.floor(f),a=tr.p[i],b=tr.p[Math.min(i+1,tr.p.length-1)],r=f-i;return[a[0]+(b[0]-a[0])*r,a[1]+(b[1]-a[1])*r]}
+let simClock=0,lastNow=0;
+function tripFrame(now){const dt=lastNow?Math.min(0.2,(now-lastNow)/1000):0;lastNow=now;simClock+=dt*SPEED*zfS;const clock=simClock,lines=[],heads=[];
+  for(const tr of TR){const s=(clock+tr.off)%(tr.dur+120);if(s>tr.dur)continue;const f1=posAt(tr,s),f0=posAt(tr,Math.max(0,s-TRAIL));
+    const pts=[interp(tr,f0)];for(let i=Math.ceil(f0);i<=Math.floor(f1);i++)pts.push(tr.p[i]);const h=interp(tr,f1);pts.push(h);
+    if(pts.length>=2)lines.push({type:'Feature',properties:{},geometry:{type:'LineString',coordinates:pts}});heads.push({type:'Feature',properties:{g:Math.floor(s/0.9)%2},geometry:{type:'Point',coordinates:h}})}
+  map2.getSource('trips').setData({type:'FeatureCollection',features:lines});map2.getSource('heads').setData({type:'FeatureCollection',features:heads})}
+const DASH=[[0,4,3],[0.5,4,2.5],[1,4,2],[1.5,4,1.5],[2,4,1],[2.5,4,0.5],[3,4,0],[0,0.5,3,3.5],[0,1,3,3],[0,1.5,3,2.5],[0,2,3,2],[0,2.5,3,1.5],[0,3,3,1],[0,3.5,3,0.5]];
+let lastDash=-1,lastTrip=0,lastPulse=0;
+function loop(now){
+  if(cur==='v1'&&m1Ready&&pulse1&&now-lastPulse>40){lastPulse=now;const k=(Math.sin(now/520)+1)/2,ph=(now/1600)%1;
+    map1.setPaintProperty('hex1-crit','line-opacity',0.25+0.75*k);map1.setPaintProperty('sites1-ring','circle-radius',6+16*ph);map1.setPaintProperty('sites1-ring','circle-stroke-opacity',1-ph)}
+  if(cur==='v2'&&m2Ready){const d=Math.floor(now/70)%DASH.length;if(d!==lastDash&&show.corr){map2.setPaintProperty('corr-flow','line-dasharray',DASH[d]);lastDash=d}
+    zoomFactors();if(show.trips&&!routeActive&&now-lastTrip>50){tripFrame(now);lastTrip=now}else if(routeActive)lastNow=0
+    if(playing){const t=Math.min(15,(now-playT0)/1000*1.5);setT(t);if(t>=15){playing=false;$('bplay').textContent='▶ Play'}}}
+  requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+
+// ---------- shared controls ----------
+let cur='v1',is3D1=false,is3D2=true,base='dark';
+function switchView(v){if(cur===v)return;cur=v;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t.dataset.v===v));document.querySelectorAll('.view').forEach(s=>s.classList.toggle('on',s.id===v));
+  if(v==='v2'){if(!map2)initMap2();else map2.resize();setTimeout(()=>map2.resize(),60);startPlay()}else map1.resize();
+  $('b3d').classList.toggle('on',v==='v2'?is3D2:is3D1);applyBase()}
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>switchView(t.dataset.v));
+$('b3d').onclick=()=>{if(cur==='v1'){is3D1=!is3D1;$('b3d').classList.toggle('on',is3D1);toggle1('hex1',$('t1').querySelector('[data-k=hex1]').checked);map1.easeTo({pitch:is3D1?58:30,duration:1200})}
+  else{is3D2=!is3D2;$('b3d').classList.toggle('on',is3D2);applyShow2();map2&&map2.easeTo({pitch:is3D2?55:0,duration:1200})}};
+function applyBase(){[map1,map2].forEach(m=>{if(!m||!m.getLayer('sat')||!m.getLayer('lbl'))return;m.setLayoutProperty('sat','visibility',base==='sat'?'visible':'none');m.setLayoutProperty('dark','visibility',base==='dark'?'visible':'none');m.setPaintProperty('lbl','raster-opacity',base==='sat'?0.6:0.85)})}
+$('base').querySelectorAll('button').forEach(b=>b.onclick=()=>{$('base').querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on');base=b.dataset.b;applyBase()});
+$('btour').onclick=async()=>{const m=cur==='v1'?map1:map2;if(!m)return;
+  const stops=cur==='v1'?D.top.all.filter(s=>!/النبوي/.test(s.name)).slice(0,6).map((s,i)=>({c:[s.lon,s.lat],z:17,t:`#${i+1} ${s.name||CAT[s.cat].l} · score ${s.score}`,id:s.id}))
+    :[{c:D.haram,z:14.6,t:'Masjid an‑Nabawi: the dominant pedestrian attractor'},...D.hot.features.slice(0,4).map((f,i)=>{const r=f.geometry.coordinates[0][0];let x=0,y=0;r.forEach(p=>{x+=p[0];y+=p[1]});return{c:[x/r.length,y/r.length],z:14.2,t:`Movement hotspot #${i+1} · ${f.properties.a} km²`}})];
+  for(const s of stops){toast(s.t);m.flyTo({center:s.c,zoom:s.z,pitch:58,bearing:Math.random()*60-30,duration:2600,essential:true});await new Promise(r=>m.once('moveend',r));
+    if(cur==='v1'&&s.id!=null){const f=D.sites.features[s.id];sitePopup(f.properties,f.geometry.coordinates)}await new Promise(r=>setTimeout(r,2600));document.querySelectorAll('.maplibregl-popup').forEach(p=>p.remove())}
+  m.flyTo({center:D.haram,zoom:cur==='v1'?11.6:13,pitch:40,bearing:-12,duration:2500})};
+$('bpng').onclick=()=>{const m=cur==='v1'?map1:map2;if(!m)return;
+  m.once('render',()=>{const src=m.getCanvas(),W=src.width,H=src.height,r=W/src.clientWidth;const c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d');g.drawImage(src,0,0);
+    g.fillStyle='rgba(11,16,22,.88)';g.fillRect(0,0,W,70*r);g.fillStyle='#e8eef5';g.font=`800 ${22*r}px Inter`;g.fillText(cur==='v1'?'Madinah · Priority Areas for Cooling':'Madinah · Major Pedestrian Movement Patterns',18*r,32*r);
+    g.fillStyle='#8d9bb0';g.font=`500 ${13*r}px Inter`;g.fillText('Open-source analysis · OSM (Geofabrik) · network walk model · '+S.generated,18*r,54*r);
+    const items=cur==='v1'?[5,4,3,2,1].map(k=>[CPI_COL[k],CPI_LBL[k]]).concat([[UMB,'Cooling perimeter / umbrella'],[TREE,'Shade tree'],['#5eead4','Walkway'],['#4ade80','Park']]):[5,4,3,2].map(k=>[PMI_COL[k],'PMI '+PMI_LBL[k]]).concat([['#ffffff','Corridor'],['#ffd166','Walk to Haram'],['#22c55e','Cool route A→B'],['#f43f5e','Route in hot zone']]);
+    const lh=22*r,bw=230*r,bh=(items.length+1)*lh+10*r,x0=W-bw-16*r,y0=H-bh-40*r;g.fillStyle='rgba(17,24,33,.92)';g.fillRect(x0,y0,bw,bh);
+    g.fillStyle='#e8eef5';g.font=`700 ${13*r}px Inter`;g.fillText(cur==='v1'?'Cooling Priority':'Pedestrian Movement',x0+12*r,y0+20*r);
+    items.forEach(([col,l],i)=>{g.fillStyle=col;g.fillRect(x0+12*r,y0+(i+1)*lh+8*r,16*r,11*r);g.fillStyle='#d5dde8';g.font=`500 ${12*r}px Inter`;g.fillText(l,x0+36*r,y0+(i+1)*lh+18*r)});
+    const a=document.createElement('a');a.download=(cur==='v1'?'Madinah_Cooling_Priority':'Madinah_Pedestrian_Movement')+'.png';a.href=c.toDataURL('image/png');a.click();toast('PNG exported')});m.triggerRepaint()};
+window.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;if(e.key==='1')switchView('v1');if(e.key==='2')switchView('v2')});
+</script>
+</body>
+</html>
