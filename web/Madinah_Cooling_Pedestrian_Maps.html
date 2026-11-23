@@ -120,8 +120,17 @@ table.plan tr.tot td{font-weight:800;border-top:1px solid #3b82f6;border-bottom:
 @keyframes bob{from{transform:translateY(0)}to{transform:translateY(-1.6px)}}
 .walker.rest .fig,.walker.rest .leg,.walker.rest .arm{animation:none}
 .walker.rest .a1{transform:rotate(-150deg)}.walker.rest .a2{transform:rotate(150deg)}
-.mopt{position:absolute;left:426px;top:14px;z-index:4;box-shadow:0 8px 24px #0009}.mopt button{padding:9px 13px;font-size:13px}
-@media (max-width:900px){.mopt{left:8px;top:8px}}
+.mopt{position:absolute;left:426px;top:14px;z-index:4;box-shadow:0 8px 24px #0009;transition:left .3s}.mopt button{padding:9px 13px;font-size:13px}
+aside{transition:transform .3s ease}.map{transition:left .3s ease}
+body.nopanel aside{transform:translateX(-100%)}body.nopanel .map{left:0}body.nopanel .mopt{left:16px}
+.ptog{position:absolute;left:410px;top:50%;transform:translateY(-50%);z-index:6;width:22px;height:64px;border:1px solid var(--line);border-left:0;border-radius:0 10px 10px 0;background:var(--panel);color:#e8eef5;cursor:pointer;font:700 12px Inter;display:grid;place-items:center;box-shadow:4px 0 14px #0007;transition:left .3s ease}
+.ptog:hover{background:#1d3557}body.nopanel .ptog{left:0;width:30px}
+.onoff{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 12px}
+.onoff button{display:flex;align-items:center;justify-content:space-between;gap:6px;border:1px solid var(--line);background:#141c26;color:var(--mut);border-radius:10px;padding:9px 11px;font:600 12.5px Inter;cursor:pointer}
+.onoff button i{font-style:normal;font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:999px;background:#243142;color:#8d9bb0}
+.onoff button.on{color:#fff;border-color:#22d3ee;background:#0e2a36}.onoff button.on i{background:#22d3ee;color:#0b1016}
+.onoff button.on[data-t=tree]{border-color:#22c55e;background:#10291b}.onoff button.on[data-t=tree] i{background:#22c55e}
+@media (max-width:900px){.mopt{left:8px;top:8px}.ptog{display:none}}
 .wk{display:flex;flex-direction:column;align-items:center}
 .srch{width:100%;background:#0d141c;border:1px solid var(--line);color:var(--tx);border-radius:9px;padding:8px 10px;font:500 12.5px Inter;margin-bottom:8px}
 .pts{margin:0 0 12px;padding-left:16px;color:#c4cfdd;font-size:12.5px;line-height:1.55}.pts li{margin:2px 0}.pts b{color:#fff}
@@ -167,6 +176,7 @@ table.plan tr.tot td{font-weight:800;border-top:1px solid #3b82f6;border-bottom:
       <li><b>Zone:</b> 20 m cooling perimeter around each building</li>
       <li><b>Phase 1 (now):</b> ☂ umbrellas · <b>Phase 2 (long‑term):</b> 🌳 trees</li>
     </ul>
+    <div class="onoff" id="optTop"><button data-t="umb" class="on">☂ Umbrellas <i>ON</i></button><button data-t="tree">🌳 Trees <i>OFF</i></button></div>
     <div class="kpis" id="k1"></div>
     <h3>Cooling Priority Index <span id="cpiArea"></span></h3>
     <div class="card dist" id="d1"></div>
@@ -197,6 +207,7 @@ table.plan tr.tot td{font-weight:800;border-top:1px solid #3b82f6;border-bottom:
     <div class="card method" id="m1"></div>
   </aside>
   <div class="map" id="map1"></div>
+  <button class="ptog" title="Hide / show panel">◀</button>
   <div class="seg mopt" id="opt2"><button data-o="umb" class="on">☂ Umbrellas</button><button data-o="tree">🌳 Trees</button><button data-o="both">Both</button><button data-o="none">Off</button></div>
   <div class="legend" id="lg1"></div>
 </section>
@@ -238,6 +249,7 @@ table.plan tr.tot td{font-weight:800;border-top:1px solid #3b82f6;border-bottom:
     <div class="card method" id="m2"></div>
   </aside>
   <div class="map" id="map2"></div>
+  <button class="ptog" title="Hide / show panel">◀</button>
   <div class="legend" id="lg2"></div>
 </section>
 
@@ -339,8 +351,9 @@ function applyUmbFilter(){if(!m1Ready)return;const f=['all',['in',['get','e'],['
   $('eff').innerHTML=`<div class="kpis" style="margin:0 0 8px"><div class="kpi" style="--k:#22c55e"><div class="v">${fmt(P.shade_pct)}<small>%</small></div><div class="l">of busy pedestrian spaces (forecourts, walkways, crossings, junctions) shaded by ☂ in Phase 1</div></div>
     <div class="kpi" style="--k:#38bdf8"><div class="v">↓ ${fmt(Math.abs(P.air_dT),2)}<small>°C cooler</small></div><div class="l">cooler air in High+ zones (${fmt(P.hot_km2,0)} km²) after Phase 2: +${fmt(P.canopy_pp,0)} % tree canopy × 0.33 °C per 10 % (WRI)</div></div></div>
     <ul class="pts" style="margin:0"><li>Under a ☂ or 🌳 the <b>felt heat</b> drops much more than the air, because direct sun is blocked.</li><li><b>Next:</b> SOLWEIG before/after UTCI at top sites</li></ul>`;
-  ['opt','opt2'].forEach(id=>$(id).querySelectorAll('button').forEach(b=>b.onclick=()=>{shadeOpt=b.dataset.o;
-    ['opt','opt2'].forEach(j=>$(j).querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.o===shadeOpt)));applyShade()}));
+  ['opt','opt2'].forEach(id=>$(id).querySelectorAll('button').forEach(b=>b.onclick=()=>{shadeOpt=b.dataset.o;syncShadeUI();applyShade()}));
+  $('optTop').querySelectorAll('button').forEach(b=>b.onclick=()=>{let u=shadeOpt==='umb'||shadeOpt==='both',t=shadeOpt==='tree'||shadeOpt==='both';
+    if(b.dataset.t==='umb')u=!u;else t=!t;shadeOpt=u&&t?'both':u?'umb':t?'tree':'none';syncShadeUI();applyShade()});
   $('cat1').innerHTML=Object.entries(CAT).map(([k,v])=>`<div class="chip" data-c="${k}"><span class="d" style="background:${v.c}"></span>${v.l} <span style="color:var(--mut)">${fmt(S.cats[k].n)}</span></div>`).join('');
   $('cat1').querySelectorAll('.chip').forEach(ch=>ch.onclick=()=>{const k=ch.dataset.c;cat1On.has(k)?cat1On.delete(k):cat1On.add(k);ch.classList.toggle('off');applyCat1()});
   const T=[['hex1','Cooling Priority Index (hexagons)',1],['suit','Umbrella suitability cells (zoom 15+)',1],['umbheat','Umbrella density (city view)',1],['perim','Cooling perimeters',1],['fp','Building footprints',1],['walk1','Walkways / plazas',1],['parks1','Parks',1],['cross1','Ped. crossings',1],['pulse','Animate critical zones',1]];
@@ -385,6 +398,9 @@ function sitePopup(p,ll){
 function applyCat1(){if(!m1Ready)return;const f=['in',['get','cat'],['literal',[...cat1On]]];
   ['sites1','sites1-glow','perim-fill','perim-line'].forEach(l=>map1.setFilter(l,f));map1.setFilter('sites1-ring',['all',f,['>=',['get','c'],5]]);
   map1.setLayoutProperty('parks1','visibility',cat1On.has('Park')&&$('t1').querySelector('[data-k=parks1]').checked?'visible':'none')}
+function syncShadeUI(){const u=shadeOpt==='umb'||shadeOpt==='both',t=shadeOpt==='tree'||shadeOpt==='both';
+  ['opt','opt2'].forEach(j=>$(j).querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.o===shadeOpt)));
+  $('optTop').querySelectorAll('button').forEach(x=>{const on=x.dataset.t==='umb'?u:t;x.classList.toggle('on',on);x.querySelector('i').textContent=on?'ON':'OFF'})}
 function applyShade(){if(!m1Ready)return;const u=shadeOpt==='umb'||shadeOpt==='both',t=shadeOpt==='tree'||shadeOpt==='both';
   ['umb','umb-dot'].forEach(l=>map1.setLayoutProperty(l,'visibility',u?'visible':'none'));map1.setLayoutProperty('umbheat','visibility',u&&$('t1').querySelector('[data-k=umbheat]').checked?'visible':'none');
   ['tree','stree','streeheat'].forEach(l=>map1.setLayoutProperty(l,'visibility',t?'visible':'none'));
@@ -412,8 +428,8 @@ map1.on('load',()=>{
   map1.addLayer({id:'umbheat',type:'heatmap',source:'umb',maxzoom:14.5,paint:{'heatmap-radius':['interpolate',['linear'],['zoom'],9,4,14,18],'heatmap-intensity':['interpolate',['linear'],['zoom'],9,0.5,14,1.2],
     'heatmap-color':['interpolate',['linear'],['heatmap-density'],0,'rgba(0,0,0,0)',0.15,'rgba(14,116,144,.45)',0.4,'#22d3ee',0.7,'#a5f3fc',1,'#ffffff'],'heatmap-opacity':['interpolate',['linear'],['zoom'],12,0.85,14.5,0]}});
   map1.addSource('stree',{type:'geojson',data:STREE});
-  map1.addLayer({id:'streeheat',type:'heatmap',source:'stree',maxzoom:14.5,layout:{visibility:'none'},paint:{'heatmap-radius':['interpolate',['linear'],['zoom'],9,2,14,10],'heatmap-intensity':['interpolate',['linear'],['zoom'],9,0.15,14,0.6],
-    'heatmap-color':['interpolate',['linear'],['heatmap-density'],0,'rgba(0,0,0,0)',0.2,'rgba(21,128,61,.45)',0.5,'#22c55e',0.8,'#86efac',1,'#f0fdf4'],'heatmap-opacity':['interpolate',['linear'],['zoom'],12,0.85,14.5,0]}});
+  map1.addLayer({id:'streeheat',type:'heatmap',source:'stree',maxzoom:14.5,layout:{visibility:'none'},paint:{'heatmap-radius':['interpolate',['linear'],['zoom'],9,2,14,8],'heatmap-intensity':['interpolate',['linear'],['zoom'],9,0.02,12,0.05,14,0.2],
+    'heatmap-color':['interpolate',['linear'],['heatmap-density'],0,'rgba(0,0,0,0)',0.25,'rgba(21,128,61,.35)',0.6,'rgba(34,197,94,.6)',1,'rgba(134,239,172,.75)'],'heatmap-opacity':['interpolate',['linear'],['zoom'],12,0.8,14.5,0]}});
   map1.addLayer({id:'stree',type:'circle',source:'stree',minzoom:13,layout:{visibility:'none'},paint:{'circle-radius':['interpolate',['exponential',2],['zoom'],13,1.2,15,2.6,17,7.36,22,235.6],'circle-color':TREE,'circle-opacity':0.45,'circle-stroke-color':'#bbf7d0','circle-stroke-width':['interpolate',['linear'],['zoom'],15,0,17,0.8]}});
   map1.addLayer({id:'tree',type:'circle',source:'trees_p',minzoom:12,layout:{visibility:'none'},paint:{'circle-radius':['interpolate',['exponential',2],['zoom'],12,2.2,15,3.6,17,7.36,22,235.6],'circle-color':TREE,'circle-opacity':0.55,'circle-stroke-color':'#bbf7d0','circle-stroke-width':1}});
   map1.addLayer({id:'umb',type:'circle',source:'umb',minzoom:12,paint:{'circle-radius':['interpolate',['exponential',2],['zoom'],12,1.8,15,2.8,17,5.19,22,166.1],'circle-color':['match',['get','e'],'j','#fbbf24','c','#fde047','w','#5eead4',UMB],'circle-opacity':0.35,'circle-stroke-color':'#e0f7ff','circle-stroke-width':['interpolate',['linear'],['zoom'],13,0.4,18,1.6]}});
@@ -782,6 +798,9 @@ $('bpng').onclick=()=>{const m=cur==='v1'?map1:map2;if(!m)return;
     g.fillStyle='#e8eef5';g.font=`700 ${13*r}px Inter`;g.fillText(cur==='v1'?'Cooling Priority':'Pedestrian Movement',x0+12*r,y0+20*r);
     items.forEach(([col,l],i)=>{g.fillStyle=col;g.fillRect(x0+12*r,y0+(i+1)*lh+8*r,16*r,11*r);g.fillStyle='#d5dde8';g.font=`500 ${12*r}px Inter`;g.fillText(l,x0+36*r,y0+(i+1)*lh+18*r)});
     const a=document.createElement('a');a.download=(cur==='v1'?'Madinah_Cooling_Priority':'Madinah_Pedestrian_Movement')+'.png';a.href=c.toDataURL('image/png');a.click();toast('PNG exported')});m.triggerRepaint()};
+document.querySelectorAll('.ptog').forEach(b=>b.onclick=()=>{const off=document.body.classList.toggle('nopanel');
+  document.querySelectorAll('.ptog').forEach(x=>{x.textContent=off?'▶':'◀';x.title=off?'Show panel':'Hide panel'});
+  const t0=performance.now();(function rs(){[map1,map2].forEach(m=>m&&m.resize());if(performance.now()-t0<350)requestAnimationFrame(rs)})()});
 window.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;if(e.key==='1')switchView('v1');if(e.key==='2')switchView('v2')});
 </script>
 </body>
