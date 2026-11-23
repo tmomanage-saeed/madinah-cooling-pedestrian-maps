@@ -332,7 +332,7 @@ function applyUmbFilter(){if(!m1Ready)return;const f=['all',['in',['get','e'],['
     <div class="ramp" style="background:linear-gradient(90deg,#334155,#f59e0b 45%,#22d3ee 75%,#a5f3fc)"></div><div class="rampl"><span>35 low</span><span>55 suitable</span><span>100 best</span></div>
     <div class="note">Zoom in (z15+) to see the 8 m suitability cells; click any ☂ to see <b>why it is there</b>.</div>`;
   $('eff').innerHTML=`<div class="kpis" style="margin:0 0 8px"><div class="kpi" style="--k:#22c55e"><div class="v">${fmt(P.shade_pct)}<small>%</small></div><div class="l">of priority pedestrian space gets shade</div></div>
-    <div class="kpi" style="--k:#38bdf8"><div class="v">${P.air_dT}<small>°C</small></div><div class="l">air temp. (WRI: −0.33 °C / +10 pp canopy)</div></div></div>
+    <div class="kpi" style="--k:#38bdf8"><div class="v">↓ ${fmt(Math.abs(P.air_dT),2)}<small>°C cooler</small></div><div class="l">air temperature drop from +${fmt(P.canopy_pp,0)} % tree canopy (WRI: 0.33 °C per +10 %)</div></div></div>
     <ul class="pts" style="margin:0"><li>Real gain = <b>felt heat (UTCI) under the shade</b>, not air temp.</li><li><b>Next:</b> SOLWEIG before/after UTCI at top sites</li></ul>`;
   ['opt','opt2'].forEach(id=>$(id).querySelectorAll('button').forEach(b=>b.onclick=()=>{shadeOpt=b.dataset.o;
     ['opt','opt2'].forEach(j=>$(j).querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.o===shadeOpt)));applyShade()}));
