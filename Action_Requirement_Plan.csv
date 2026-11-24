@@ -1,6 +1,6 @@
 ﻿Rank,Category,Name,Priority tier,Priority score,Zone m2,Suitable open space m2,Shade m2,Umbrellas (100 m2) short-term,Shade trees (200 m2) long-term,Note
-1,Mosque,المسجد النبوي,Critical,100.0,31085,0,0,0,0,Existing Haram plaza umbrellas – excluded
-2,Mosque,التوسعة الشرقية للمسجد النبوي الشريف,Critical,91.5,16189,0,0,0,0,Existing Haram plaza umbrellas – excluded
+1,Mosque,المسجد النبوي,Critical,100.0,31085,0,0,0,0,Inside Haram plaza zone – umbrellas exist
+2,Mosque,التوسعة الشرقية للمسجد النبوي الشريف,Critical,91.5,16189,0,0,0,0,Inside Haram plaza zone – umbrellas exist
 3,Mosque,مسجد علي بن أبي طالب,Critical,78.9,2949,2560,1100,11,6,
 4,Mosque,مسجد أبو بكر الصديق,Critical,78.2,2586,2496,1100,11,6,
 5,Mosque,مسجد الغمامة,Critical,78.2,3438,2112,1100,11,6,
@@ -8,16 +8,16 @@
 7,School,,Critical,77.9,2827,576,400,4,2,
 8,Bus,Al Aliyah Bus Station,Critical,77.7,707,1260,300,3,2,
 9,School,مركز ضيافة الأطفال بالمسجد النبوي,Critical,77.6,2827,2112,1000,10,5,
-10,Bus,الحافلة السياحية-البقيع,Critical,77.6,707,504,200,2,1,
-11,Bus,Shazah Bus Station,Critical,77.6,707,468,100,1,1,
+10,Bus,الحافلة السياحية-البقيع,Critical,77.6,707,0,0,0,0,Inside Haram plaza zone – umbrellas exist
+11,Bus,Shazah Bus Station,Critical,77.6,707,0,0,0,0,Inside Haram plaza zone – umbrellas exist
 12,Mosque,مسجد محطة الرشوان,Critical,77.3,2502,1024,700,7,4,
 13,Mosque,مسجد الزعاقي,Critical,77.3,2161,1088,700,7,4,
 14,Mosque,Masjid Ar Rehaily,Critical,77.3,3159,2176,900,9,5,
-15,Bus,City Siightseeing - Bus Station 4 - Alsalam Gate,Critical,77.0,707,324,200,2,1,
+15,Bus,City Siightseeing - Bus Station 4 - Alsalam Gate,Critical,77.0,707,180,100,1,1,
 16,Mosque,مسجد أبو بكر الصديق,Critical,76.4,2550,1664,1000,10,5,
 17,Mosque,مسجد جود الرحيلي,Critical,76.4,2792,1472,900,9,5,
 18,Mall,مركز نامية,Critical,76.4,5027,1920,1200,12,6,
-19,Mall,Centre Point,Critical,76.3,4947,832,500,5,3,
+19,Mall,Centre Point,Critical,76.3,4947,0,0,0,0,Inside Haram plaza zone – umbrellas exist
 20,Mall,Al Madinah Center,Critical,76.1,4083,1792,600,6,3,
 21,Mosque,Al Barakah Mosque,Critical,75.0,2609,1728,900,9,5,
 22,School,"الثانوية الثانية
@@ -205,7 +205,7 @@
 200,Mosque,مسجد الرحمة,High,55.4,2923,2560,800,8,4,
 201,Mosque,,High,55.4,3162,2048,700,7,4,
 202,Mosque,مسجد البركة,High,55.4,3084,2048,700,7,4,
-203,Mosque,مسجد ذو النورين,High,55.1,2926,960,300,3,2,
+203,Mosque,مسجد ذو النورين,High,55.1,2926,512,200,2,1,
 204,Mosque,,High,55.0,3898,3136,1000,10,5,
 205,School,,High,55.0,8353,3456,1100,11,6,
 206,Bus,,High,54.8,4763,1548,300,3,2,
@@ -229,7 +229,7 @@
 224,Mosque,مسجد دار الهجرة,High,54.0,2965,2304,700,7,4,
 225,Mosque,Masjid Al Manarat,High,53.9,3119,2240,700,7,4,
 226,Mosque,مسجد عبدالله الحبيشي,High,53.9,2513,2112,700,7,4,
-227,Bus,Saptco Vip Express,High,53.9,707,720,300,3,2,
+227,Bus,Saptco Vip Express,High,53.9,707,252,100,1,1,
 228,Mosque,مسجد شلوان,High,53.8,2495,1664,500,5,3,
 229,Park,,High,53.6,3351,2800,500,5,3,
 230,Mosque,,High,53.5,2911,1600,500,5,3,
@@ -750,7 +750,7 @@
 745,Park,Uhod Mountain Park,Low,10.2,24942,0,0,0,0,
 746,Park,Al Soror Park,Low,10.1,10433,200,0,0,0,
 
-,Priority walkways (CPI High+),81.0 km,,,,,59100,591,446,1 shade stop every 100 / 150 / 220 m (Critical / Very High / High)
-,Road crossings (CPI Critical),,,,,,78000,780,,1 umbrella per crossing waiting point (PedestrianCatch network)
-,"Road junctions (major road in High+ zone, all in Critical)",7368,,,,,602400,6024,,1 corner umbrella per junction (3+ vehicle-road arms) where open sidewalk space exists
-,"Street trees long-term (High+ zones, both sides)",2940 km,,,,,39187000,,195935,"every 15 m, 2.5 m outside kerb; not at junctions / Haram plaza"
+,Priority walkways (CPI High+),81.0 km,,,,,5300,53,45,1 shade stop every 100 / 150 / 220 m (Critical / Very High / High)
+,Road crossings (CPI Critical),,,,,,36900,369,,1 umbrella per crossing waiting point (PedestrianCatch network)
+,"Road junctions (major road in High+ zone, all in Critical)",7368,,,,,311900,3119,,1 corner umbrella per junction (3+ vehicle-road arms) where open sidewalk space exists
+,"Street trees long-term (High+ zones, both sides)",2940 km,,,,,39150000,,195750,"every 15 m, 2.5 m outside kerb; not at junctions / Haram plaza"

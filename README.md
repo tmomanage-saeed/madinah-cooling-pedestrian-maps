@@ -11,13 +11,13 @@ This repo holds two interactive web maps built from open data (OpenStreetMap / G
 - Umbrella suitability model on 8 m cells: 30% heat, 30% footfall, 20% sun exposure, 20% sidewalk access.
 - Cells on buildings, roads or under existing tree shade are excluded.
 - Action-Requirement Plan:
-  - ☂ 10,943 umbrellas (100 m², short-term)
-  - 🌳 2,382 site trees
-  - 🌳 195,935 street trees (200 m² canopy, long-term programme)
+  - Phase 1: ☂ 7,077 umbrellas (100 m² each). Minimum spacing is 14 m at sites, 50–60 m at crossings and junctions, and 100–220 m on walkways.
+  - Phase 2: 🌳 197,724 trees: 1,974 at sites and 195,750 street trees (200 m² canopy).
+  - Map 01 has a "Why these numbers?" table giving the basis for every rule.
 
 ## Map 02: Pedestrian Movement (Task 6)
 - Pedestrian Movement Index with hotspots and animated corridors.
-- 700 simulated pedestrians walk shortest paths to Masjid an-Nabawi.
+- 700 pedestrians walk to Masjid an-Nabawi and 4,989 walk across the city to their nearest mosque, school, bus stop, mall or park. All follow real shortest paths.
 - 5/10/15-min walking catchments, with minute labels on the network.
 - A→B tool:
   - Compares the fastest route with a cool route.

@@ -27,9 +27,9 @@ SENS_W = {"Mosque": 3.0, "School": 3.0, "Bus": 2.5, "Mall": 2.5, "Park": 1.5}
 NABAWI_W = 10.0
 SENS_RADIUS_M = 300          # ~4 min walk
 W_SENS, W_PED, W_SHADE = 0.40, 0.35, 0.25
-PERIM_FOOTPRINT_M = 20       # footprint ke bahar 20 m ka ring (forecourt / sidewalk)
-PERIM_POINT_M = {"Mosque": 30, "School": 30, "Mall": 40, "Bus": 15}   # footprint na ho to point ke gird
-GREEN_FULL = 0.30            # hex ka 30% green = poora shaded
+PERIM_FOOTPRINT_M = 20       # 20 m ring outside the footprint (forecourt / sidewalk)
+PERIM_POINT_M = {"Mosque": 30, "School": 30, "Mall": 40, "Bus": 15}   # zone around the point when there is no footprint
+GREEN_FULL = 0.30            # 30 % green in a hexagon = fully shaded
 
 def log(m): print(m, flush=True)
 
@@ -156,7 +156,7 @@ log("CPI breaks: " + ", ".join(f"{b:.3f}" for b in brk))
 for c in range(1, 6):
     log(f"  CPI {c} {CLABEL[c]:<10} {(ccls == c).sum():>6}")
 
-# alag GDB me likho (Madinah_City.gdb Pro me khula ho to lock na aaye)
+# write to a separate GDB (Madinah_City.gdb may be locked by ArcGIS Pro)
 AGDB = os.path.join(ROOT, "Madinah_Analysis.gdb")
 if not arcpy.Exists(AGDB):
     arcpy.management.CreateFileGDB(ROOT, "Madinah_Analysis.gdb")
@@ -181,7 +181,7 @@ for s, i in zip(sites, hi_site):
     s["cpi"] = float(cpi[i]); s["ccls"] = int(ccls[i]); s["pmi"] = float(pmi[i])
     s["shade"] = float(shade_def[i])
     s["score"] = round(100 * (0.75 * s["cpi"] / max(cpi.max(), 1e-9) + 0.25 * s["w"] / NABAWI_W), 1)
-# Site priority tier = percentile of score (sab sites ek jaisi class me na aayein)
+# Site priority tier = percentile of score (so that sites do not all fall into one class)
 _sc = np.array([s["score"] for s in sites])
 _tb = np.percentile(_sc, [25, 50, 75, 90])
 for s in sites:
@@ -252,7 +252,7 @@ log(f"Corridors kept: {len(corr)}")
 # =================== WALKING NETWORK CATCHMENTS (pedestriancatch-style) ===================
 from scipy.sparse import coo_matrix
 from scipy.sparse.csgraph import dijkstra
-WALK_SPEED = 1.1          # m/s (garmi + zaireen ki bheer: 1.04-1.2)
+WALK_SPEED = 1.1          # m/s (heat + pilgrim crowds: 1.04-1.2)
 MAX_MIN = 15
 log("Walking network ...")
 rd = arcpy.analysis.Select(gf("roads"), mem + "\\wk_sel",
@@ -293,7 +293,7 @@ def snap(points, maxd=150):
     d, j = ntree.query(points)
     return sorted({int(k) for k, dd in zip(j, d) if dd <= maxd})
 
-haram_src = sorted(set(ntree.query_ball_point([hp.X, hp.Y], 220)))  # Haram plaza ke gates
+haram_src = sorted(set(ntree.query_ball_point([hp.X, hp.Y], 220)))  # Haram plaza gates
 SCEN = {
     "haram":  haram_src,
     "bus":    snap([[s["x"], s["y"]] for s in sites if s["cat"] == "Bus"]),
@@ -324,7 +324,7 @@ for ids, coords in road_feats:
                             "properties": pr})
 log(f"  catchment segments: {len(catch_feats)}")
 
-# minute labels (isochrone style, PedestrianCatch jaisa) + per-node walking minutes for click-explore
+# minute labels (isochrone style, like PedestrianCatch) + per-node walking minutes for click-explore
 _A = np.array(ea); _B = np.array(eb); _mpts = []
 for k in SCEN:
     t = TT[k]; ta, tb = t[_A], t[_B]
@@ -350,7 +350,7 @@ cmin = {"o": [39.3, 24.2], "p": [v for (lon, lat), q in zip(_mll, _mpts)
 ntime = {k[0] if k != "mall" else "l": [int(round(v * 10)) if np.isfinite(v) and v <= MAX_MIN else -1 for v in TT[k]] for k in SCEN}
 log(f"  minute labels {len(_mpts)}")
 
-# coverage: kitna shehar (hex) 5/10 min walk ke andar
+# coverage: city area (hex) within a 5/10 min walk
 _, hex_node_d = None, None
 hd, hn = ntree.query(np.c_[cx, cy])
 cover = {}
@@ -358,7 +358,7 @@ for k in SCEN:
     t = TT[k][hn]; ok = hd < 150
     cover[k] = {str(m): round(float(((t <= m) & ok).sum() * float(area.mean()) / 1e6), 1) for m in (5, 10, 15)}
 
-# Haram ki taraf chalte pedestrians (shortest-path tree se, bana-wat nahi)
+# pedestrians walking to the Haram (from the shortest-path tree, not invented)
 rng = np.random.default_rng(7)
 th = TT["haram"]
 cand = np.where(np.isfinite(th) & (th >= 6) & (th <= MAX_MIN))[0]
@@ -374,6 +374,33 @@ for n0 in pick:
     ts = [round((t0 - float(th[i])) * 60, 1) for i in path]   # seconds since departure
     trips.append({"p": wg, "t": ts})
 log(f"  trips to Haram: {len(trips)}")
+
+# City-wide pedestrians: shortest path from any street to the nearest destination (mosque / school / bus / mall / park)
+CITY_TRIPS = 5000
+_dst = sorted(set(SCEN["mosque"]) | set(SCEN["school"]) | set(SCEN["bus"]) | set(SCEN["mall"]) |
+              set(snap([[s["x"], s["y"]] for s in sites if s["cat"] == "Park"])))
+_cd, _cp, _ = dijkstra(G, indices=_dst, min_only=True, limit=lim, return_predecessors=True)
+_ct = _cd / WALK_SPEED / 60
+_ok = np.where(np.isfinite(_ct) & (_ct >= 2) & (_ct <= MAX_MIN))[0]
+_, _nh = tree.query(nxy[_ok])
+_w = 0.15 + np.clip(pmi[_nh], 0, None) ** 0.7          # more people on busy streets, but some in every area
+_w = _w / _w.sum()
+_pick = rng.choice(_ok, size=min(CITY_TRIPS, len(_ok)), replace=False, p=_w)
+ctrips = []
+for n0 in _pick:
+    path = [int(n0)]
+    while _cp[path[-1]] >= 0 and len(path) < 3000:
+        path.append(int(_cp[path[-1]]))
+    if len(path) < 3: continue
+    ctrips.append(path)
+_allc = sorted({i for pth in ctrips for i in pth})
+_cmp = arcpy.Multipoint(arcpy.Array([arcpy.Point(nx_[i], ny_[i]) for i in _allc]), SR_UTM).projectAs(SR_WGS)
+_cll = {i: (int(round((p.X - 39.3) * 1e5)), int(round((p.Y - 24.2) * 1e5))) for i, p in zip(_allc, _cmp)}
+ctrip_out = []
+for pth in ctrips:
+    t0 = float(_ct[pth[0]])
+    ctrip_out.append({"p": [v for i in pth for v in _cll[i]], "t": [int(round((t0 - float(_ct[i])) * 60)) for i in pth]})
+log(f"  city-wide trips: {len(ctrip_out)}  (points {sum(len(c['t']) for c in ctrip_out)})")
 
 # =================== PEDESTRIANCATCH KML CROSS-CHECK ===================
 import glob, re, xml.etree.ElementTree as ET
@@ -402,7 +429,7 @@ if kmls:
                 cs = pm.find(".//" + K + "coordinates")
                 if cs is None: continue
                 ring = [list(map(float, c.split(",")[:2])) for c in cs.text.split()]
-                if ring and ring[0][0] < 30:            # lat/lon ulta likha ho to theek karo
+                if ring and ring[0][0] < 30:            # fix swapped lat/lon
                     ring = [[b, a] for a, b in ring]
                 m = re.match(r"\s*(\d+)min", desc)
                 pc_hull_feats.append({"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [ring]},
@@ -459,21 +486,21 @@ plan = []          # rows per site / element
 umb_pts, tree_pts = [], []
 
 # ---------------- UMBRELLA SUITABILITY MODEL ----------------
-# Har 8 m candidate cell ko score (0-100) milta hai:
+# Every 8 m candidate cell gets a score (0-100):
 #   S = 30% Heat (CPI) + 30% Footfall (PMI + dwell) + 20% Sun exposure (building side + existing shade) + 20% Access (sidewalk)
-# Constraints (cell hata do): building ke andar, road carriageway par, existing tree canopy (<8 m), Haram plaza (<250 m, umbrellas maujood)
-# Placement: sirf S >= SUIT_MIN, 14 m min spacing (10x10 m canopy + 4 m raasta), site ki demand tak, best score pehle.
+# Constraints (cell removed): inside a building, on a road carriageway, under existing tree canopy (<8 m), Haram plaza (existing umbrellas)
+# Placement: only S >= SUIT_MIN, 14 m min spacing (10x10 m canopy + 4 m path), up to the site demand, best score first.
 from matplotlib.path import Path as MPath
 import collections
 log("Umbrella suitability ...")
 GRID = 8.0
 SPACING_U, SPACING_T = 14.0, 16.0
 SUIT_MIN, SUIT_TREE, SUIT_SHOW = 55, 45, 35
-HARAM_EXIST_M = 250
-SUN_AZ = 255.0          # garmiyon me 14-16 h dhoop WSW se: building ka west/south side sab se garam
+HARAM_EXIST_M = 420      # Masjid an-Nabawi + its plaza (~400 m from centre) already has 250 large umbrellas
+SUN_AZ = 255.0          # summer sun 14-16 h from WSW: west/south side of a building is hottest
 DWELL = {"Mosque": 1.0, "School": 0.9, "Bus": 1.0, "Mall": 0.8, "Park": 0.7, "Crossing": 1.0, "Junction": 1.0, "Walkway": 0.5}
-JUNC_MIN_CPI, JUNC_MIN_S = 2, 40     # har junction (Moderate+ zone) par ek corner umbrella
-WALK_INTERVAL = {5: 100, 4: 150, 3: 220}   # walkway par har itne metre baad ek shade stop (~1.5 / 2.3 / 3.3 min)
+JUNC_MIN_CPI, JUNC_MIN_S = 2, 40     # one corner umbrella per junction
+WALK_INTERVAL = {5: 100, 4: 150, 3: 220}   # one shade stop per this many metres of walkway (~1.5 / 2.3 / 3.3 min)
 HW = {"motorway": 12, "motorway_link": 6, "trunk": 12, "trunk_link": 6, "primary": 10, "primary_link": 5,
       "secondary": 8, "secondary_link": 5, "tertiary": 6, "tertiary_link": 4, "residential": 4,
       "unclassified": 4, "living_street": 3, "service": 3}
@@ -516,7 +543,7 @@ def rings_utm(g):
 
 def grid_in(g, step=GRID):
     if g is None or g.area <= 0: return np.zeros((0, 2))
-    g = g.densify("DISTANCE", 2, 0.5)          # buffer ke true-curve arcs -> segments (warna circle khali aata hai)
+    g = g.densify("DISTANCE", 2, 0.5)          # turn true-curve buffer arcs into segments (otherwise circles come out empty)
     e = g.extent
     xs = np.arange(e.XMin + step / 2, e.XMax, step); ys = np.arange(e.YMin + step / 2, e.YMax, step)
     if not len(xs) or not len(ys): return np.zeros((0, 2))
@@ -583,7 +610,7 @@ for (x, y), hw in zip(_jxy, _jhw):
     if key in _jseen: continue
     _jseen.add(key)
     c = int(ccls[int(tree.query([x, y])[1])])
-    if not ((hw >= 6 and c >= 3) or c >= 5): continue    # major-road junction in High+ zone, ya Critical zone ka har junction
+    if not ((hw >= 6 and c >= 3) or c >= 5): continue    # major-road junction in a High+ zone, or any junction in a Critical zone
     junc_n[c] += 1
     r = hw + 4.0
     P = np.c_[x + r * np.sin(_ang), y + r * np.cos(_ang)]
@@ -646,13 +673,26 @@ def free(x, y, sp, st):
                 if (qx - x) ** 2 + (qy - y) ** 2 < sp * sp: return False
     return True
 def put(x, y, sp, st): st.setdefault((int(x // sp), int(y // sp)), []).append((x, y))
-def pick(ids, n, thr, sp, st):
+# all umbrellas in a 50 m grid -> "no other umbrella within GAP metres" check
+ALLU = {}
+GAP = {"junc": 60.0, "cross": 50.0}        # walkway gap = WALK_INTERVAL (100 / 150 / 220 m)
+def near_any(x, y, r):
+    c = 50.0; cx_, cy_ = int(x // c), int(y // c); kk = int(math.ceil(r / c))
+    for a in range(-kk, kk + 1):
+        for b in range(-kk, kk + 1):
+            for qx, qy in ALLU.get((cx_ + a, cy_ + b), ()):
+                if (qx - x) ** 2 + (qy - y) ** 2 < r * r: return True
+    return False
+def pick(ids, n, thr, sp, st, gap=0.0):
     out = []
     if n <= 0: return out
     for k in ids[np.argsort(-S[ids])]:
         if S[k] < thr: break
         x, y = CP[k]
-        if free(x, y, sp, st): put(x, y, sp, st); out.append(k)
+        if gap and near_any(x, y, gap): continue
+        if free(x, y, sp, st):
+            put(x, y, sp, st); out.append(k)
+            if st is storeU: ALLU.setdefault((int(x // 50), int(y // 50)), []).append((x, y))
         if len(out) >= n: break
     return out
 
@@ -660,7 +700,7 @@ plan = []; umb_pts, tree_pts = [], []
 def rec(k, s, el, dest):
     dest.append((float(CP[k, 0]), float(CP[k, 1]), s, el, k))
 walk_dem = {"m2": 0, "umb": 0, "tree": 0, "km": round(walk_km, 1)}
-cross_umb = 0; junc_umb = {}
+cross_umb = 0; junc_umb = {}; junc_skip = {"covered": 0, "nospace": 0}
 # order: highest priority first (top sites claim best spots)
 order = sorted(range(len(elems)), key=lambda i: (-{"site": 4, "cross": 3, "junc": 2, "park": 1, "walk": 0}[elems[i]["kind"]],
                                                 -(elems[i]["s"].get("score") or 0)))
@@ -674,7 +714,7 @@ for i in order:
         frac = 0.5 if e["kind"] == "park" else 1.0
         req = 0 if nab else math.ceil(min(len(suit) * cell * tgt * frac, CAP_M2[s["cat"]]) / UMB_M2)
         U = pick(ids, req, SUIT_MIN, SPACING_U, storeU)
-        if s["cat"] == "Bus" and not U:          # har bus stop par kam az kam 1 shelter (best open sidewalk cell)
+        if s["cat"] == "Bus" and not U:          # at least 1 shelter at every bus stop (best open sidewalk cell)
             U = pick(ids, 1, 1, SPACING_U, storeU)
         Tt = pick(ids, math.ceil(len(U) * UMB_M2 / TREE_M2), SUIT_TREE, SPACING_T, storeT)
         for k in U: rec(k, s, "park" if e["kind"] == "park" else "perimeter", umb_pts)
@@ -683,27 +723,32 @@ for i in order:
         plan.append(dict(type="site", cat=s["cat"], name=s["name"], tier=s["ccls"], score=s["score"],
                          zone_m2=round(zone), suit_m2=round(len(suit) * cell), demand_m2=len(U) * 100,
                          umbrellas=len(U), trees=len(Tt),
-                         note="Existing Haram plaza umbrellas – excluded" if nab else ("No suitable open space (buildings / roads / shade)" if not len(suit) and tgt > 0 else ""),
+                         note=("Inside Haram plaza zone – umbrellas exist" if (nab or math.hypot(s["x"] - hp.X, s["y"] - hp.Y) < HARAM_EXIST_M) and not U
+                               else ("No suitable open space (buildings / roads / shade)" if not len(suit) and tgt > 0 else "")),
                          lon=s.get("lon"), lat=s.get("lat"), id=s.get("id")))
     elif e["kind"] == "walk":
-        iv = WALK_INTERVAL[e["c"]]; U = []
-        b = (e["along"] // iv).astype(int)
-        for bb in np.unique(b):
-            U += pick(ids[b == bb], 1, 50, SPACING_U, storeU)
+        iv = WALK_INTERVAL[e["c"]]
+        U = pick(ids, len(ids), 50, SPACING_U, storeU, gap=iv)   # 1 umbrella per iv metres, counting every nearby umbrella
         Tt = pick(ids, math.ceil(len(U) * UMB_M2 / TREE_M2), SUIT_TREE, SPACING_T, storeT)
         for k in U: rec(k, s, "walkway", umb_pts)
         for k in Tt: rec(k, s, "walkway", tree_pts)
         walk_dem["umb"] += len(U); walk_dem["tree"] += len(Tt); walk_dem["m2"] += len(U) * 100
     elif e["kind"] == "junc":
-        U = pick(ids, 1, JUNC_MIN_S, SPACING_U, storeU)
+        U = pick(ids, 1, JUNC_MIN_S, SPACING_U, storeU, gap=GAP["junc"])
         for k in U: rec(k, s, "junction", umb_pts); junc_umb[s["ccls"]] = junc_umb.get(s["ccls"], 0) + 1
+        if not U: junc_skip["covered" if (S[ids] >= JUNC_MIN_S).any() else "nospace"] += 1
     else:
-        U = pick(ids, 1, SUIT_MIN, SPACING_U, storeU)
+        U = pick(ids, 1, SUIT_MIN, SPACING_U, storeU, gap=GAP["cross"])
         for k in U: rec(k, s, "crossing", umb_pts); cross_umb += 1
 log(f"Umbrellas {len(umb_pts)}  Trees {len(tree_pts)}  (walkway umb {walk_dem['umb']}, crossing {cross_umb})")
+_ux = np.array([(p[0], p[1]) for p in umb_pts]); _ue = np.array([p[3] for p in umb_pts])
+_nd, _ = cKDTree(_ux).query(_ux, k=2)
+for _el in ("perimeter", "park", "junction", "crossing", "walkway"):
+    m_ = _ue == _el
+    if m_.any(): log(f"  QA nearest-umbrella distance [{_el}]: min {_nd[m_,1].min():.0f} m, median {np.median(_nd[m_,1]):.0f} m, n={m_.sum()}")
 
 # ---------------- LONG-TERM STREET TREE PROGRAMME ----------------
-# High+ cooling zones ki har walkable street ke dono taraf sidewalk par, har 15 m (200 m2 crown ~ 16 m -> continuous canopy)
+# both kerbs of every walkable street in High+ cooling zones, every 15 m (200 m2 crown ~ 16 m -> continuous canopy)
 ST_SP, ST_OFF, ST_MIN_CPI = 15.0, 2.5, 3
 log("Street trees ...")
 jtree = cKDTree(_jxy) if len(_jxy) else None
@@ -734,13 +779,13 @@ log(f"  street candidates {len(SP_)} on {ckm:.0f} km")
 ok = np.ones(len(SP_), bool)
 ok &= np.hypot(SP_[:, 0] - hp.X, SP_[:, 1] - hp.Y) > HARAM_EXIST_M
 if jtree is not None:
-    jd, _ = jtree.query(SP_); ok &= jd > 12                         # junction sight triangle khali
+    jd, _ = jtree.query(SP_); ok &= jd > 12                         # keep junction sight triangle clear
 dd, jj = rtree.query(SP_, k=12, distance_upper_bound=40)
 v_ = np.isfinite(dd); jj_ = np.where(v_, jj, 0)
-ok &= ~(v_ & (rh[jj_] > 0) & (dd < rh[jj_] + 1.0)).any(1)          # doosri sadak ke carriageway par nahi
+ok &= ~(v_ & (rh[jj_] > 0) & (dd < rh[jj_] + 1.0)).any(1)          # not on another road's carriageway
 _, hi_ = tree.query(SP_); ok &= ccls[hi_] >= ST_MIN_CPI
 if otree is not None:
-    od, _ = otree.query(SP_); ok &= od > 8                          # pehle se tree maujood
+    od, _ = otree.query(SP_); ok &= od > 8                          # tree already exists
 SP_ = SP_[ok]
 stfc = arcpy.management.CreateFeatureclass(mem, "stc", "POINT", spatial_reference=SR_UTM)[0]
 arcpy.management.AddField(stfc, "cid", "LONG")
@@ -833,9 +878,10 @@ for r in plan:
     a = summ.setdefault(r["cat"], {"sites": 0, "crit": 0, "m2": 0, "umb": 0, "tree": 0})
     a["sites"] += 1; a["crit"] += r["tier"] >= 4; a["m2"] += r["demand_m2"]; a["umb"] += r["umbrellas"]; a["tree"] += r["trees"]
 summ["Walkway"] = {"sites": None, "km": round(walk_dem["km"], 1), "m2": round(walk_dem["m2"]), "umb": walk_dem["umb"], "tree": walk_dem["tree"]}
-summ["Crossing"] = {"sites": cross_umb, "m2": cross_umb * 100, "umb": cross_umb, "tree": 0}
+summ["Crossing"] = {"sites": sum(1 for e in elems if e["kind"] == "cross"), "m2": cross_umb * 100, "umb": cross_umb, "tree": 0}
 _ju = sum(junc_umb.values())
-summ["Junction"] = {"sites": sum(junc_n.values()), "m2": _ju * 100, "umb": _ju, "tree": 0}
+summ["Junction"] = {"sites": sum(junc_n.values()), "m2": _ju * 100, "umb": _ju, "tree": 0, "covered": junc_skip["covered"], "nospace": junc_skip["nospace"]}
+log(f"  junctions skipped: {junc_skip}")
 summ["StreetTree"] = {"sites": None, "km": round(ckm), "m2": len(street_pts) * 200, "umb": 0, "tree": len(street_pts)}
 plan_top = [dict(r, tl=CLABEL[r["tier"]]) for r in sorted(plan, key=lambda r: -r["score"])[:40]]
 
@@ -986,7 +1032,7 @@ data = {"stats": stats, "hex": {"type": "FeatureCollection", "features": hex_fea
         "top": {"all": top(None, 25), "Mosque": top("Mosque", 10), "School": top("School", 10),
                 "Bus": top("Bus", 10), "Mall": top("Mall", 10), "Park": top("Park", 10)},
         "catch": {"type": "FeatureCollection", "features": catch_feats},
-        "trips": trips, "cover": cover, "pc": pc,
+        "trips": trips, "ctrips": ctrip_out, "cover": cover, "pc": pc,
         "pc_hull": {"type": "FeatureCollection", "features": pc_hull_feats},
         "pc_pts": {"type": "FeatureCollection", "features": pc_pts},
         "pcnet": pcnet,

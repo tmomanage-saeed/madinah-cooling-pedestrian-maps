@@ -203,6 +203,8 @@ body.nopanel aside{transform:translateX(-100%)}body.nopanel .map{left:0}body.nop
     <input class="srch" id="q1" placeholder="🔎 Search any mosque / school / mall / park…" dir="auto">
     <div class="subtabs" id="st1"></div>
     <div class="list" id="l1"></div>
+    <h3>Why these numbers? (for the client)</h3>
+    <div class="card method" id="why1"></div>
     <h3>Method</h3>
     <div class="card method" id="m1"></div>
   </aside>
@@ -305,6 +307,8 @@ let m1Ready=false,cat1On=new Set(Object.keys(CAT)),topCat='all',pulse1=true,shad
 const SUIT={type:'FeatureCollection',features:[]};{const o=D.suit.o,p=D.suit.p;for(let i=0;i<p.length;i+=3)SUIT.features.push({type:'Feature',properties:{s:p[i+2]},geometry:{type:'Point',coordinates:[o[0]+p[i]/1e5,o[1]+p[i+1]/1e5]}})}
 const CMIN={type:'FeatureCollection',features:[]};{const o=D.cmin.o,p=D.cmin.p,K='hbmsl';for(let i=0;i<p.length;i+=4)CMIN.features.push({type:'Feature',properties:{m:p[i+2],k:K[p[i+3]]},geometry:{type:'Point',coordinates:[o[0]+p[i]/1e5,o[1]+p[i+1]/1e5]}})}
 const STREE={type:'FeatureCollection',features:[]};{const o=D.stree.o,p=D.stree.p;for(let i=0;i<p.length;i+=2)STREE.features.push({type:'Feature',properties:{},geometry:{type:'Point',coordinates:[o[0]+p[i]/1e5,o[1]+p[i+1]/1e5]}})}
+const TRC=(D.ctrips||[]).map((t,i)=>{const p=[];let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(let k=0;k<t.p.length;k+=2){const x=39.3+t.p[k]/1e5,y=24.2+t.p[k+1]/1e5;p.push([x,y]);x0=Math.min(x0,x);x1=Math.max(x1,x);y0=Math.min(y0,y);y1=Math.max(y1,y)}
+  const dur=Math.max(1,t.t[t.t.length-1]);return{p,t:t.t,dur,off:(i*97.31)%(dur+30),h:1,bb:[x0,y0,x1,y1]}});
 const SUIT_COL=['interpolate',['linear'],['get','s'],35,'#334155',55,'#f59e0b',75,'#22d3ee',95,'#a5f3fc'];
 // walking minutes from any spot (per-node times precomputed on the network)
 function walkTimes(ll){const n=snapNode(ll);if(n<0)return null;const g=buildGraph(),d=Math.hypot((g.lon[n]-ll.lng)*101200,(g.lat[n]-ll.lat)*110900),add=d/SPEED_MS/60,o={};
@@ -331,15 +335,16 @@ function applyUmbFilter(){if(!m1Ready)return;const f=['all',['in',['get','e'],['
   $('ptab').innerHTML='<tr><th>Element</th><th>Count</th><th>☂ Phase 1</th><th>🌳 Phase 2</th></tr>'+rows.map(([k,l])=>{const r=P.summary[k];if(!r)return'';tu+=r.umb;tt+=r.tree;
      const n=(k==='Walkway'||k==='StreetTree')?fmt(r.km,0)+' km':fmt(r.sites);return`<tr><td>${l}</td><td>${n}</td><td>${r.umb?fmt(r.umb):'–'}</td><td>${r.tree?fmt(r.tree):'–'}</td></tr>`}).join('')+
      `<tr class="tot"><td>Total</td><td></td><td>${fmt(tu)}</td><td>${fmt(tt)}</td></tr>`;
-  const zeroLow=Object.values(P.site).filter(v=>v[0]===0&&!v[3]).length,noSpace=Object.values(P.site).filter(v=>v[0]===0&&/^No suitable/.test(v[3])).length,J=P.summary.Junction;
+  const zeroLow=Object.values(P.site).filter(v=>v[0]===0&&!v[3]).length,noSpace=Object.values(P.site).filter(v=>v[0]===0&&/^No suitable/.test(v[3])).length,inHaram=Object.values(P.site).filter(v=>v[0]===0&&/Haram/.test(v[3])).length,J=P.summary.Junction;
   $('pnote').innerHTML=`<ul class="pts" style="margin:0;font-size:11.5px">
     <li><b>Phase 1 ☂</b> = quick shade now (100 m² each). <b>Phase 2 🌳</b> = permanent shade (200 m² crown each).</li>
     <li>At sites, 1 tree later replaces 2 umbrellas. Street trees are <b>extra</b>, along streets.</li>
     <li>☂ only on open, suitable spots (score ≥ ${D.suit_w.min}), never on a building or road, ${D.suit_w.spacing} m apart.</li>
-    <li>Walkways: 1 ☂ every 100 / 150 / 220 m (Critical / Very High / High).</li>
-    <li>Junctions: ${fmt(J.umb)} of ${fmt(J.sites)} get a corner ☂. The other ${fmt(J.sites-J.umb)} have no open corner.</li>
+    <li>Walkways: at most 1 ☂ per 100 / 150 / 220 m (Critical / Very High / High), counting ☂ already nearby.</li>
+    <li>Junctions: ${fmt(J.umb)} of ${fmt(J.sites)} get a corner ☂. ${fmt(J.covered)} already have a ☂ within 60 m, ${fmt(J.nospace)} have no open corner.</li>
+    <li>Pedestrian crossings (Critical zone): ${fmt(P.summary.Crossing.umb)} of ${fmt(P.summary.Crossing.sites)} waiting points get a ☂. The rest already have a ☂ within 50 m or no open kerb.</li>
     <li>${fmt(zeroLow)} low‑priority sites (bottom 25 %) get none: heat and footfall are low there. ${noSpace} more sites have no open space around them (buildings / roads).</li>
-    <li>Masjid an‑Nabawi plaza: not counted, umbrellas already exist.</li>
+    <li>Masjid an‑Nabawi and its plaza (420 m): not counted, large umbrellas already exist (${inHaram} sites inside).</li>
     <li>Street trees: both sides of every walkable street in High+ zones, every ${D.plan.street.sp} m.</li></ul>`;
   const SW=D.suit_w;
   $('suitbox').innerHTML=`<div class="formula">S = ${SW.heat}% Heat + ${SW.foot}% Footfall<br>&nbsp;&nbsp;+ ${SW.sun}% Sun exposure + ${SW.access}% Access</div>
@@ -369,6 +374,18 @@ function applyUmbFilter(){if(!m1Ready)return;const f=['all',['in',['get','e'],['
   $('st1').innerHTML=tabs.map(([k,l])=>`<button data-k="${k}" class="${k==='all'?'on':''}">${l}</button>`).join('');
   $('st1').querySelectorAll('button').forEach(b=>b.onclick=()=>{$('st1').querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on');topCat=b.dataset.k;renderTop()});
   renderTop();
+  $('why1').innerHTML=`<table class="plan"><tr><th>Rule</th><th>Value</th><th>Basis</th></tr>
+    <tr><td>Umbrella size</td><td>100 m²</td><td>Project brief</td></tr>
+    <tr><td>Tree canopy</td><td>200 m²</td><td>Project brief (mature tree, ~16 m crown)</td></tr>
+    <tr><td>☂ to ☂ at a site</td><td>14 m</td><td>10 m canopy + 4 m walking gap</td></tr>
+    <tr><td>☂ at junction / crossing</td><td>≥ 60 / 50 m apart</td><td>One waiting point per corner group; no duplicates</td></tr>
+    <tr><td>☂ on walkway</td><td>100 / 150 / 220 m</td><td>Planning assumption: ≤ 1.5 / 2.3 / 3.3 min in sun at 1.1 m/s</td></tr>
+    <tr><td>Street trees</td><td>every 15 m, both kerbs</td><td>16 m crowns touch, so shade is continuous</td></tr>
+    <tr><td>Haram plaza</td><td>420 m excluded</td><td>Existing large umbrellas already shade it</td></tr>
+    <tr><td>Suitability weights</td><td>30/30/20/20</td><td>Planning assumption, can be changed in the script</td></tr>
+    <tr><td>Walking speed</td><td>1.1 m/s</td><td>Checked against PedestrianCatch: ±2 min for 94 % of points</td></tr>
+    <tr><td>Air cooling</td><td>0.33 °C / +10 % canopy</td><td>WRI / Engel et al. 2026</td></tr></table>
+    <div class="note">All rules are in <code>build_web_data.py</code>. Change a value and re-run to get new counts.</div>`;
   $('m1').innerHTML=`<div class="formula">CPI = 40% Sensitive uses + 35% Pedestrian movement + 25% Shade deficit</div>
    <ul class="pts" style="margin:0"><li><b>Sensitive uses</b>: 300 m kernel · Haram 10, mosque/school 3, bus/mall 2.5, park 1.5</li>
    <li><b>Shade deficit</b> = 1 − green cover (OSM)</li><li><b>Classes</b>: Critical top 5 % · VH 85–95 % · High 65–85 %</li>
@@ -477,12 +494,13 @@ $('bcsv').onclick=()=>{
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='Madinah_Action_Requirement_Plan_top40.csv';a.click()};
 
 // ===================== MAP 2 =====================
-let map2=null,m2Ready=false,origin='h',T=15,playing=false,show={umb2:true,cmin:true,trips:true,corr:true,catch:true,hex2:true,hot:true,pcnet:false,pc:false,pcp:false};
+let map2=null,m2Ready=false,origin='h',T=15,playing=false,show={ctrips:true,umb2:true,cmin:true,trips:true,corr:true,catch:true,hex2:true,hot:true,pcnet:false,pc:false,pcp:false};
 function initMap2(){if(map2)return;map2=mkMap('map2');
   map2.on('load',()=>{
     ['hex','hot','corr','catch','sites','pcnet'].forEach(k=>map2.addSource(k,{type:'geojson',data:D[k]}));
     map2.addSource('pch',{type:'geojson',data:D.pc_hull});map2.addSource('pcp',{type:'geojson',data:D.pc_pts});
     map2.addSource('trips',{type:'geojson',data:{type:'FeatureCollection',features:[]},lineMetrics:true});
+    map2.addSource('ctrips',{type:'geojson',data:{type:'FeatureCollection',features:[]},lineMetrics:true});
     map2.addSource('heads',{type:'geojson',data:{type:'FeatureCollection',features:[]}});
     map2.addSource('route',{type:'geojson',data:{type:'FeatureCollection',features:[]}});
     map2.addSource('rmin',{type:'geojson',data:{type:'FeatureCollection',features:[]}});
@@ -494,8 +512,9 @@ function initMap2(){if(map2)return;map2=mkMap('map2');
     map2.addLayer({id:'catch',type:'line',source:'catch',paint:{'line-width':['interpolate',['linear'],['zoom'],11,1,16,3.5],'line-opacity':0.9}});
     map2.addLayer({id:'corr-base',type:'line',source:'corr',paint:{'line-color':'#fff','line-opacity':0.16,'line-width':['interpolate',['linear'],['zoom'],11,['*',['get','p'],2.2],16,['*',['get','p'],8]]}});
     map2.addLayer({id:'corr-flow',type:'line',source:'corr',paint:{'line-color':['match',['get','k'],'ped','#7dd3fc','#ffffff'],'line-opacity':0.9,'line-width':['interpolate',['linear'],['zoom'],11,['*',['get','p'],1.6],16,['*',['get','p'],5]],'line-dasharray':[0,4,3]}});
+    map2.addLayer({id:'ctrips',type:'line',source:'ctrips',layout:{'line-cap':'round'},paint:{'line-width':['interpolate',['linear'],['zoom'],11,1.1,16,3.2],'line-gradient':['interpolate',['linear'],['line-progress'],0,'rgba(103,232,249,0)',1,'rgba(165,243,252,0.9)']}});
     map2.addLayer({id:'trips',type:'line',source:'trips',layout:{'line-cap':'round'},paint:{'line-width':['interpolate',['linear'],['zoom'],11,1.6,16,4],'line-gradient':['interpolate',['linear'],['line-progress'],0,'rgba(255,209,102,0)',1,'rgba(255,209,102,0.95)']}});
-    map2.addLayer({id:'heads',type:'circle',source:'heads',maxzoom:14.6,paint:{'circle-radius':['interpolate',['linear'],['zoom'],11,1.8,16,4.5],'circle-color':'#fff7d6','circle-blur':0.3}});
+    map2.addLayer({id:'heads',type:'circle',source:'heads',maxzoom:14.6,paint:{'circle-radius':['interpolate',['linear'],['zoom'],11,1.8,16,4.5],'circle-color':['match',['get','h'],1,'#cffafe','#fff7d6'],'circle-blur':0.3}});
     map2.addLayer({id:'pch',type:'line',source:'pch',layout:{visibility:'none'},paint:{'line-color':'#818cf8','line-width':['match',['get','m'],10,2.6,1],'line-opacity':['match',['get','m'],10,1,0.5]}});
     map2.addLayer({id:'pcp',type:'circle',source:'pcp',layout:{visibility:'none'},paint:{'circle-radius':['interpolate',['linear'],['zoom'],13,2,18,6],'circle-color':['interpolate',['linear'],['get','t'],0,'#1e3a8a',5,'#6366f1',10,'#e0e7ff'],'circle-stroke-color':'#fff','circle-stroke-width':0.6}});
     map2.addLayer({id:'pcp-t',type:'symbol',source:'pcp',minzoom:16,layout:{visibility:'none','text-field':['concat',['to-string',['get','t']],'′'],'text-font':['Open Sans Semibold'],'text-size':10,'text-offset':[0,1.1]},paint:{'text-color':'#e0e7ff','text-halo-color':'#000','text-halo-width':1.2}});
@@ -538,7 +557,7 @@ function initMap2(){if(map2)return;map2=mkMap('map2');
   $('orig').innerHTML=Object.entries(ORIG).map(([k,v])=>`<button data-k="${k}" class="${k===origin?'on':''}">${v.l}</button>`).join('');
   $('orig').querySelectorAll('button').forEach(b=>b.onclick=()=>{$('orig').querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on');setOrigin(b.dataset.k);startPlay()});
   distRows($('d2'),[5,4,3,2,1].map(k=>({l:PMI_LBL[k],c:PMI_COL[k],v:S.pmi_counts[k],t:fmt(S.pmi_counts[k]*S.hex_km2,1)+' km²'})),Math.max(...Object.values(S.pmi_counts)));
-  const T2=[['umb2','Proposed umbrellas + street trees (zoom in)'],['cmin','Walking‑minute labels on map'],['hex2','PMI hexagons (3D)'],['hot','Movement hotspots'],['corr','Animated corridors'],['trips','Pedestrians walking to the Haram'],['catch','Walking catchment network'],
+  const T2=[['umb2','Proposed umbrellas + street trees (zoom in)'],['cmin','Walking‑minute labels on map'],['hex2','PMI hexagons (3D)'],['hot','Movement hotspots'],['corr','Animated corridors'],['ctrips',`People walking across the city (${fmt(TRC.length)})`],['trips','Pedestrians walking to the Haram'],['catch','Walking catchment network'],
             ['pcnet','PedestrianCatch sidewalks + crossings'],['pc','PedestrianCatch 1–10 min hulls'],['pcp','PedestrianCatch timed points']];
   $('t2').innerHTML=T2.map(([k,l])=>`<label class="tg"><input type="checkbox" data-k="${k}" ${show[k]?'checked':''}>${l}</label>`).join('');
   $('t2').querySelectorAll('input').forEach(i=>i.onchange=()=>{show[i.dataset.k]=i.checked;applyShow2()});
@@ -548,7 +567,7 @@ function initMap2(){if(map2)return;map2=mkMap('map2');
     <ul class="pts" style="margin:0"><li>Same ${pc.starts} start points re‑run on our network</li><li>Two independent tools agree → model validated</li>${pc.net_n?`<li>${fmt(pc.cross_n)} PedestrianCatch crossings → crossing ☂ on Map 01</li>`:''}</ul>`:'No PedestrianCatch export found.';
   $('m2').innerHTML=`<div class="formula">PMI = 35% Walkability + 45% Destinations + 20% Built</div>
     <ul class="pts" style="margin:0"><li><b>Walk time</b>: Dijkstra on ${fmt(S.walk_km)} km footpaths + streets · ${SPEED_MS} m/s</li>
-    <li><b>Pedestrians</b>: ${fmt(D.trips.length)} real shortest paths to the Haram</li><li><b>Corridor width</b> = flow</li></ul>
+    <li><b>Pedestrians</b>: ${fmt(D.trips.length)} walk to the Haram (gold) + ${fmt(TRC.length)} across the city (cyan), each on the real shortest path to the nearest mosque / school / bus / mall / park. More people start on busier streets (PMI).</li><li><b>Corridor width</b> = flow</li></ul>
     <div class="note"><b>Modelled</b>, not counted. Calibrate with Haram gate counts / phone data.</div>`;
 })();
 function catchColor(k){const v=['coalesce',['get',k],99];return['interpolate',['linear'],v,0,'#22d3ee',5,'#a3e635',10,'#ffd166',15,'#f43f5e']}
@@ -563,11 +582,11 @@ let playT0=0;function startPlay(){playing=true;playT0=performance.now();$('bplay
 $('bplay').onclick=()=>{if(playing){playing=false;$('bplay').textContent='▶ Play'}else startPlay()};
 function applyShow2(){if(!m2Ready)return;const vis=(l,on)=>map2.setLayoutProperty(l,'visibility',on?'visible':'none');
   vis('hex2',show.hex2&&!is3D2);vis('hex2-3d',show.hex2&&is3D2);vis('hot',show.hot);vis('corr-base',show.corr);vis('corr-flow',show.corr);
-  vis('trips',show.trips);vis('heads',show.trips);vis('heads-fig',show.trips);vis('catch',show.catch);vis('pch',show.pc);vis('pcp',show.pcp);vis('pcp-t',show.pcp);vis('pcnet',show.pcnet);vis('cmin5',show.cmin);vis('cmin1',show.cmin);vis('umb2',show.umb2);vis('stree2',show.umb2)}
+  vis('trips',show.trips);vis('ctrips',show.ctrips);vis('heads',show.trips||show.ctrips);vis('heads-fig',show.trips||show.ctrips);vis('catch',show.catch);vis('pch',show.pc);vis('pcp',show.pcp);vis('pcp-t',show.pcp);vis('pcnet',show.pcnet);vis('cmin5',show.cmin);vis('cmin1',show.cmin);vis('umb2',show.umb2);vis('stree2',show.umb2)}
 $('lg2').innerHTML=`<h4>Pedestrian Movement Index</h4>${[5,4,3,2].map(k=>`<div class="lg"><span class="sw" style="background:${PMI_COL[k]}"></span>${PMI_LBL[k]}</div>`).join('')}
   <div class="lg"><span class="sw" style="border:1.5px dashed #ffd166"></span>Movement hotspot</div><div class="sep"></div>
   <div class="lg"><span class="sw l" style="background:#fff"></span>Busy street corridor (width = flow)</div><div class="lg"><span class="sw l" style="background:#7dd3fc"></span>Footpath / pedestrian corridor</div>
-  <div class="lg"><span class="sw c" style="background:#fff7d6;box-shadow:0 0 6px #ffd166"></span>Pedestrian walking to the Haram</div>
+  <div class="lg"><span class="sw c" style="background:#fff7d6;box-shadow:0 0 6px #ffd166"></span>Pedestrian walking to the Haram</div><div class="lg"><span class="sw c" style="background:#cffafe;box-shadow:0 0 6px #67e8f9"></span>Pedestrian walking in the city</div>
   <div class="sep"></div><div style="font-size:11.5px;color:#d5dde8">Walk time from origin</div><div class="ramp" style="background:linear-gradient(90deg,#22d3ee,#a3e635 33%,#ffd166 66%,#f43f5e)"></div><div class="rampl"><span>0</span><span>5</span><span>10</span><span>15 min</span></div>
   <div class="sep"></div><div class="lg"><span class="sw l" style="background:#cbd5e1"></span>A→B fastest route</div><div class="lg"><span class="sw l" style="background:#22c55e"></span>A→B cool route</div><div class="lg"><span class="sw l" style="background:#f43f5e"></span>Cool route through hot zone</div><div class="lg"><span class="sw c" style="background:#0e7490;border:1px solid #fff"></span>☂ Shade stop on route</div><div class="lg"><span class="sw c" style="background:${UMB}"></span>Proposed umbrella</div><div class="lg"><span class="sw c" style="background:#22c55e"></span>Proposed street tree</div>
   <div class="lg"><span class="sw c" style="background:${CAT.Bus.c}"></span>Bus station / stop</div><div class="lg"><span class="sw c" style="background:${CAT.Mall.c}"></span>Shopping mall</div>`;
@@ -634,7 +653,7 @@ function analyse(r,cool){const g=buildGraph(),co=r.path.map(i=>[g.lon[i],g.lat[i
   const sh=shadeStops(co);
   return{feats,mins,hot,len:r.len,stops:sh.stops,sun:sh.sun}}
 let routeMode=false,rA=null,mk=[],coolMode=false,walker=null,walkRAF=0,routeActive=false;
-function setRouteActive(on){routeActive=on;if(!m2Ready)return;map2.setPaintProperty('catch','line-opacity',on?0.18:0.9);map2.setPaintProperty('corr-flow','line-opacity',on?0.3:0.9);const v=on?'none':(show.trips?'visible':'none');['trips','heads','heads-fig'].forEach(l=>map2.setLayoutProperty(l,'visibility',v));['cmin5','cmin1'].forEach(l=>map2.setLayoutProperty(l,'visibility',!on&&show.cmin?'visible':'none'))}
+function setRouteActive(on){routeActive=on;if(!m2Ready)return;map2.setPaintProperty('catch','line-opacity',on?0.18:0.9);map2.setPaintProperty('corr-flow','line-opacity',on?0.3:0.9);const vv=k=>on?'none':(k?'visible':'none');map2.setLayoutProperty('trips','visibility',vv(show.trips));map2.setLayoutProperty('ctrips','visibility',vv(show.ctrips));['heads','heads-fig'].forEach(l=>map2.setLayoutProperty(l,'visibility',vv(show.trips||show.ctrips)));['cmin5','cmin1'].forEach(l=>map2.setLayoutProperty(l,'visibility',!on&&show.cmin?'visible':'none'))}
 // ---- walking person animation (1 s on screen = 30 s walked) ----
 function animateWalker(co,stops,label){
   if(walker){walker.remove();cancelAnimationFrame(walkRAF)}
@@ -751,23 +770,28 @@ function routeClick(ll){
 }
 
 // ---------- trips animation ----------
-const TR=D.trips.map((t,i)=>({p:t.p,t:t.t,dur:t.t[t.t.length-1],off:(i*137.5)%900}));
+const TR=D.trips.map((t,i)=>({p:t.p,t:t.t,dur:t.t[t.t.length-1],off:(i*137.5)%900,h:0}));
+
 const SPEED=60,TRAIL=50;
 function posAt(tr,s){const t=tr.t;if(s<=0)return 0;if(s>=tr.dur)return t.length-1;let lo=0,hi=t.length-1;while(hi-lo>1){const m=(lo+hi)>>1;t[m]<=s?lo=m:hi=m}return lo+(s-t[lo])/Math.max(1e-6,t[hi]-t[lo])}
 function interp(tr,f){const i=Math.floor(f),a=tr.p[i],b=tr.p[Math.min(i+1,tr.p.length-1)],r=f-i;return[a[0]+(b[0]-a[0])*r,a[1]+(b[1]-a[1])*r]}
 let simClock=0,lastNow=0;
-function tripFrame(now){const dt=lastNow?Math.min(0.2,(now-lastNow)/1000):0;lastNow=now;simClock+=dt*SPEED*zfS;const clock=simClock,lines=[],heads=[];
-  for(const tr of TR){const s=(clock+tr.off)%(tr.dur+120);if(s>tr.dur)continue;const f1=posAt(tr,s),f0=posAt(tr,Math.max(0,s-TRAIL));
+function tripFrame(now){const dt=lastNow?Math.min(0.2,(now-lastNow)/1000):0;lastNow=now;simClock+=dt*SPEED*zfS;const clock=simClock,lines=[],linesC=[],heads=[];
+  const one=(tr,cyc,dst)=>{const s=(clock+tr.off)%(tr.dur+cyc);if(s>tr.dur)return;const f1=posAt(tr,s),f0=posAt(tr,Math.max(0,s-TRAIL));
     const pts=[interp(tr,f0)];for(let i=Math.ceil(f0);i<=Math.floor(f1);i++)pts.push(tr.p[i]);const h=interp(tr,f1);pts.push(h);
-    if(pts.length>=2)lines.push({type:'Feature',properties:{},geometry:{type:'LineString',coordinates:pts}});heads.push({type:'Feature',properties:{g:Math.floor(s/0.9)%2},geometry:{type:'Point',coordinates:h}})}
-  map2.getSource('trips').setData({type:'FeatureCollection',features:lines});map2.getSource('heads').setData({type:'FeatureCollection',features:heads})}
+    if(pts.length>=2)dst.push({type:'Feature',properties:{},geometry:{type:'LineString',coordinates:pts}});heads.push({type:'Feature',properties:{g:Math.floor(s/0.9)%2,h:tr.h},geometry:{type:'Point',coordinates:h}})};
+  if(show.trips)for(const tr of TR)one(tr,120,lines);
+  if(show.ctrips){const B=map2.getBounds(),bx0=B.getWest(),bx1=B.getEast(),by0=B.getSouth(),by1=B.getNorth();
+    const vis=TRC.filter(tr=>tr.bb[2]>=bx0&&tr.bb[0]<=bx1&&tr.bb[3]>=by0&&tr.bb[1]<=by1),st=Math.max(1,Math.ceil(vis.length/1600));
+    for(let i=0;i<vis.length;i+=st)one(vis[i],30,linesC)}
+  map2.getSource('trips').setData({type:'FeatureCollection',features:lines});map2.getSource('ctrips').setData({type:'FeatureCollection',features:linesC});map2.getSource('heads').setData({type:'FeatureCollection',features:heads})}
 const DASH=[[0,4,3],[0.5,4,2.5],[1,4,2],[1.5,4,1.5],[2,4,1],[2.5,4,0.5],[3,4,0],[0,0.5,3,3.5],[0,1,3,3],[0,1.5,3,2.5],[0,2,3,2],[0,2.5,3,1.5],[0,3,3,1],[0,3.5,3,0.5]];
 let lastDash=-1,lastTrip=0,lastPulse=0;
 function loop(now){
   if(cur==='v1'&&m1Ready&&pulse1&&now-lastPulse>40){lastPulse=now;const k=(Math.sin(now/520)+1)/2,ph=(now/1600)%1;
     map1.setPaintProperty('hex1-crit','line-opacity',0.25+0.75*k);map1.setPaintProperty('sites1-ring','circle-radius',6+16*ph);map1.setPaintProperty('sites1-ring','circle-stroke-opacity',1-ph)}
   if(cur==='v2'&&m2Ready){const d=Math.floor(now/70)%DASH.length;if(d!==lastDash&&show.corr){map2.setPaintProperty('corr-flow','line-dasharray',DASH[d]);lastDash=d}
-    zoomFactors();if(show.trips&&!routeActive&&now-lastTrip>50){tripFrame(now);lastTrip=now}else if(routeActive)lastNow=0
+    zoomFactors();if((show.trips||show.ctrips)&&!routeActive&&now-lastTrip>60){tripFrame(now);lastTrip=now}else if(routeActive)lastNow=0
     if(playing){const t=Math.min(15,(now-playT0)/1000*1.5);setT(t);if(t>=15){playing=false;$('bplay').textContent='▶ Play'}}}
   requestAnimationFrame(loop)}
 requestAnimationFrame(loop);

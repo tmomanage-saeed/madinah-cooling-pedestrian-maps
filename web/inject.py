@@ -1,4 +1,4 @@
-# Template + madinah_data.json -> HTML (arcpy ke baghair, sirf design badalne ke liye)
+# Template + madinah_data.json -> HTML (no arcpy needed; use for design-only changes)
 import os
 H = os.path.dirname(os.path.abspath(__file__))
 js = open(os.path.join(H, "madinah_data.json"), encoding="utf-8").read()
